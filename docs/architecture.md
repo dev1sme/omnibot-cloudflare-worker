@@ -1,0 +1,216 @@
+# Kiến trúc
+
+omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic lệnh chỉ viết một lần. Khác biệt giữa các nền tảng nằm gọn trong adapter.
+
+## Tổng quan
+
+```
+ Zalo ──────┐
+            │  POST /webhook/zalo
+ Telegram ──┼──────────────────────►  Cloudflare Worker
+            │  POST /webhook/telegram        │
+ Discord ───┘  POST /webhook/discord         ▼
+                                    ┌───────────────────┐
+                                    │  Adapter          │  xác minh, chuẩn hoá
+                                    │  (zalo/tg/discord)│  → IncomingMessage
+                                    └─────────┬─────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │  Router lệnh      │  /ping, /help, ...
+                                    └─────────┬─────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │  Adapter.reply()  │  gọi API của nền tảng
+                                    └───────────────────┘
+```
+
+Worker acknowledge với nền tảng trước, rồi chạy lệnh và gửi reply trong `ctx.waitUntil()`.
+
+## Các layer
+
+| Layer | Vị trí | Trách nhiệm |
+| --- | --- | --- |
+| Entry point | `src/index.ts` | Export Worker cho runtime |
+| Composition root | `src/app.ts` | Khai báo route Hono, nối adapter, core và command |
+| Core | `src/core/` | Type, pipeline, router và response envelope, không biết nền tảng hay lệnh cụ thể |
+| Adapter | `src/adapters/<name>/` | Xác minh, parse, acknowledge và reply cho một nền tảng |
+| Command | `src/commands/` | Logic không phụ thuộc nền tảng |
+| Messages | `src/messages/` | Nội dung bot gửi cho người dùng |
+| Library | `src/lib/` | Helper dùng chung như `splitMessage`, `secretEquals` và `log` |
+| Script | `scripts/` | Tác vụ cài đặt chạy một lần trên máy developer |
+
+## Quy tắc phụ thuộc
+
+| Module | CÓ THỂ import |
+| --- | --- |
+| `src/app.ts` | Tất cả các layer trong `src/` |
+| `src/core/` | `src/lib/`, `src/messages/` |
+| `src/adapters/<name>/` | `src/core/types.ts`, `src/core/response.ts`, `src/lib/`, file trong chính thư mục của nó |
+| `src/commands/` | `src/core/types.ts`, `src/lib/`, `src/messages/` |
+| `src/lib/` | Không import layer nào |
+| `src/messages/` | Không import layer nào |
+| `scripts/` | `src/commands/`, `src/core/types.ts` |
+
+- Adapter KHÔNG ĐƯỢC import adapter khác. Phần dùng chung phải chuyển vào `src/lib/`.
+- Code của Worker KHÔNG ĐƯỢC import từ `scripts/`.
+- File lệnh KHÔNG ĐƯỢC import `src/commands/index.ts`, vì sẽ gây circular import. Lệnh cần danh sách lệnh thì đọc `deps.commands`.
+- Command KHÔNG NÊN đọc `msg.raw` hoặc rẽ nhánh hành vi theo `msg.platform`. Hiển thị tên nền tảng thì được.
+- Thư viện của một nền tảng chỉ được import trong thư mục adapter đó.
+
+`src/app.ts` là module duy nhất kết nối adapter, core và command.
+
+## Cấu trúc thư mục
+
+```
+src/
+├── index.ts                # Worker entry point
+├── app.ts                  # Hono routes, wires the layers together
+├── core/
+│   ├── types.ts            # Contracts from contracts.md
+│   ├── pipeline.ts         # Request lifecycle
+│   ├── response.ts         # Response envelope helpers
+│   └── router.ts           # Command resolution
+├── adapters/
+│   ├── index.ts            # Adapter registry
+│   ├── telegram/
+│   │   ├── index.ts        # Exports the adapter object
+│   │   ├── verify.ts
+│   │   ├── parse.ts
+│   │   ├── reply.ts
+│   │   ├── schema.ts       # Payload schema
+│   │   └── client.ts       # Optional: thin API client
+│   ├── zalo/
+│   └── discord/
+├── commands/
+│   ├── index.ts            # Command registry
+│   ├── ping.ts
+│   └── help.ts
+├── messages/
+│   ├── index.ts            # Active catalog
+│   └── vi.ts
+└── lib/
+    ├── is-admin.ts
+    ├── log.ts
+    ├── parse-json.ts
+    ├── platform-error.ts
+    ├── retry.ts
+    ├── secret-equals.ts
+    └── split-message.ts
+scripts/
+├── set-webhooks.ts
+└── register-discord.ts
+```
+
+- Test đặt cạnh file được test, ví dụ `src/core/router.test.ts`.
+- Thêm nền tảng chỉ cần thêm một thư mục trong `src/adapters/` và một dòng trong registry. Xem [adapters.md](adapters.md#thêm-nền-tảng).
+- Thêm lệnh chỉ cần thêm một file trong `src/commands/` và một dòng trong registry.
+- Chỉ tạo thư mục mới cấp `src/` khi có nhu cầu thật, và phải cập nhật tài liệu này trong cùng pull request.
+
+## Routing
+
+```ts
+const app = new Hono<{ Bindings: Env }>();
+
+app.all("/webhook/:platform", (c) => {
+  const adapter = adapters.find((a) => a.name === c.req.param("platform"));
+  if (!adapter) return fail("NOT_FOUND");
+  if (c.req.method !== "POST") return fail("METHOD_NOT_ALLOWED");
+  return handleWebhook(c.req.raw, adapter, commands, c.env, c.executionCtx);
+});
+
+app.notFound(() => fail("NOT_FOUND"));
+app.onError((error) => {
+  log.error("unexpected_error", errorFields(error));
+  return fail("INTERNAL_ERROR");
+});
+```
+
+## Vòng đời request
+
+```ts
+async function handleWebhook(
+  req: Request,
+  adapter: Adapter,
+  commands: Command[],
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  if (!adapter.isEnabled(env)) return fail("NOT_FOUND");
+
+  // The body can be read only once, so the pipeline owns this read.
+  const rawBody = await req.text();
+
+  if (!(await adapter.verify(rawBody, req.headers, env))) {
+    return fail("UNAUTHORIZED");
+  }
+
+  const parsed = adapter.parse(rawBody, env);
+  if (parsed.kind === "respond") return parsed.response;
+  if (parsed.kind === "ignore") return ok();
+
+  const route = resolve(parsed.msg.text, commands);
+  if (route.kind === "none") return ok();
+
+  ctx.waitUntil(execute(route, parsed.msg, adapter, commands, env, ctx));
+  return adapter.ack(parsed.msg);
+}
+```
+
+Các bước PHẢI giữ đúng thứ tự này:
+
+1. Kiểm tra adapter đang bật.
+2. Đọc raw body một lần.
+3. Xác minh request. Không có gì được parse body trước khi bước này thành công.
+4. Parse body thành `ParseResult`.
+5. Xác định lệnh.
+6. Lên lịch xử lý bằng `ctx.waitUntil()`.
+7. Trả về acknowledgement.
+
+## Vì sao mọi lệnh đều chạy nền
+
+Discord huỷ interaction token nếu phản hồi đầu tiên mất hơn 3 giây. Lệnh không thể cam kết xong trong thời gian đó, vì có thể phải gọi API ngoài.
+
+Vì vậy mọi nền tảng đi chung một luồng: acknowledge trước, sau đó chạy lệnh và gửi reply trong `ctx.waitUntil()`. Cái giá của quy tắc này là người dùng Discord sẽ thấy trạng thái loading trong chốc lát, kể cả với `/ping`.
+
+## Thực thi
+
+`execute` chạy sau khi response đã được trả về, nên không còn gì bắt được lỗi của nó. Hàm này KHÔNG ĐƯỢC reject.
+
+```ts
+async function execute(route, msg, adapter, commands, env, ctx) {
+  const fields = { platform: msg.platform, command: commandName(route) };
+
+  let out: OutgoingMessage;
+  try {
+    out = await runRoute(route, msg, { env, ctx, commands });
+  } catch (error) {
+    log.error("command_failed", { ...fields, ...errorFields(error) });
+    out = { text: messages.commandFailed };
+  }
+
+  try {
+    await adapter.reply(msg, out, env);
+  } catch (error) {
+    log.error("reply_failed", { ...fields, ...errorFields(error) });
+  }
+}
+
+function runRoute(route, msg, deps) {
+  if (route.kind === "unknown") return { text: messages.unknownCommand };
+  if (
+    route.command.permission === "admin" &&
+    !isAdmin(msg.platform, msg.user.id, deps.env.ADMIN_USER_IDS)
+  ) {
+    return { text: messages.permissionDenied };
+  }
+  return route.command.run(msg, deps);
+}
+```
+
+Logging PHẢI theo [conventions.md](conventions.md#logging) và [security.md](security.md#logging).
+
+## Ngoài phạm vi
+
+- Long-polling và `getUpdates`. Worker không chạy liên tục, và Zalo coi polling với webhook là loại trừ lẫn nhau.
+- Discord Gateway. Muốn đọc mọi tin nhắn trong kênh thì cần kết nối WebSocket liên tục, tức là cần server riêng hoặc Durable Objects.
+- Tài khoản Zalo cá nhân. omnibot chỉ dùng Zalo Bot Platform chính thức.
