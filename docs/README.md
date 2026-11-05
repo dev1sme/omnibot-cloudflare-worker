@@ -1,8 +1,24 @@
-# Chuẩn kỹ thuật của omnibot
+# omnibot
 
-Bộ tài liệu này quy định cách xây dựng omnibot. Code, review và AI agent đều phải tuân theo.
+omnibot là một Cloudflare Worker duy nhất điều khiển nhiều bot chat: Zalo, Telegram, Discord. Logic chỉ viết một lần và chạy trên mọi nền tảng, không cần server hay VPS, và chạy được trên free tier của Cloudflare Workers.
 
-Repo chưa có code, nên đây là spec được viết trước khi implement.
+Đây là nơi duy nhất mô tả dự án. Bộ tài liệu này quy định cách xây dựng omnibot, và code, review, AI agent đều phải tuân theo. Repo chưa có code, nên đây là spec được viết trước khi implement.
+
+## Tính năng
+
+- **Một codebase, nhiều nền tảng.** Lệnh như `/ping`, `/help` viết một lần, bot nào cũng hiểu.
+- **Kiến trúc adapter.** Thêm nền tảng mới chỉ cần thêm một adapter.
+- **Serverless.** Chạy bằng webhook trên Cloudflare Workers.
+- **Bảo mật webhook.** Xác minh secret token (Zalo, Telegram) và chữ ký Ed25519 (Discord).
+- **Lưu trạng thái** bằng Cloudflare KV, có thể đổi sang D1 hoặc Durable Objects.
+- **Tác vụ nền.** Dùng `ctx.waitUntil()` để trả lời nền tảng ngay rồi xử lý lâu phía sau.
+
+## Bắt đầu
+
+- Cài đặt và deploy: [operations.md](operations.md#deploy-lần-đầu)
+- Viết lệnh mới: [commands.md](commands.md)
+- Thêm nền tảng mới: [adapters.md](adapters.md#thêm-nền-tảng)
+- Đóng góp: [conventions.md](conventions.md#branch-và-pull-request)
 
 ## Danh sách tài liệu
 
@@ -26,7 +42,7 @@ Repo chưa có code, nên đây là spec được viết trước khi implement.
 ## Nguồn chuẩn
 
 1. Nếu các tài liệu mâu thuẫn nhau, `contracts.md` được ưu tiên về type và hành vi HTTP. `security.md` được ưu tiên về bảo mật.
-2. Bộ tài liệu này được ưu tiên hơn `README.md` ở thư mục gốc, vốn chỉ là phần giới thiệu và quick start.
+2. `README.md` ở thư mục gốc chỉ trỏ về đây và không chứa mô tả dự án.
 3. Nếu code và tài liệu khác nhau thì đó là lỗi. Hãy sửa code, hoặc sửa tài liệu trong cùng pull request.
 
 ## Trạng thái
@@ -44,6 +60,15 @@ Cập nhật bảng này trong pull request làm thay đổi trạng thái của
 | Script `set-webhooks`, `register-discord` | Planned |
 | Môi trường dev và CI/CD | Planned |
 | Lệnh admin | Planned |
+
+## Roadmap
+
+- [ ] Zalo, Telegram, Discord (slash command)
+- [ ] Gửi/nhận ảnh và file
+- [ ] Tích hợp AI (Claude, Workers AI) cho chế độ chat tự do
+- [ ] Broadcast: gửi một tin đến tất cả nền tảng cùng lúc
+- [ ] Dashboard quản lý
+- [ ] Adapter Messenger, Slack
 
 ## Thông tin từ bên ngoài
 

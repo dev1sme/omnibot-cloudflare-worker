@@ -6,6 +6,16 @@
 - Tài khoản Cloudflare.
 - Wrangler là `devDependency` của dự án, chạy bằng `npx wrangler`. Không cài global. Cloudflare khuyến nghị cài local để cả dự án dùng chung một phiên bản.
 
+## Tạo bot
+
+Không cần dùng cả 3 nền tảng.
+
+| Nền tảng | Lấy token ở đâu | Cần lưu |
+| --- | --- | --- |
+| Zalo | [bot.zaloplatforms.com](https://bot.zaloplatforms.com) | Bot token |
+| Telegram | Chat với [@BotFather](https://t.me/BotFather), gõ `/newbot` | Bot token, username của bot |
+| Discord | [Discord Developer Portal](https://discord.com/developers/applications) | Application ID, Public Key, Bot token |
+
 ## Môi trường
 
 | | Production | Dev |
@@ -66,9 +76,11 @@ id = "<dev-kv-id>"
 
 Chạy các bước theo đúng thứ tự, trước hết cho dev rồi đến production. Đăng ký webhook cần URL đã deploy, và nền tảng gửi request kiểm tra nên secret phải có sẵn. Các lệnh dưới đây dành cho production. Với dev, thêm `--env dev` vào lệnh `wrangler` và dùng các script có hậu tố `:dev`.
 
-1. Cài dependency và đăng nhập:
+1. Clone repo, cài dependency và đăng nhập:
 
    ```bash
+   git clone https://github.com/dev1sme/omnibot-cloudflare-worker.git
+   cd omnibot-cloudflare-worker
    npm install
    npx wrangler login
    ```

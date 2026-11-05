@@ -2,6 +2,30 @@
 
 omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic lệnh chỉ viết một lần. Khác biệt giữa các nền tảng nằm gọn trong adapter.
 
+## Tổng quan
+
+```
+ Zalo ──────┐
+            │  POST /webhook/zalo
+ Telegram ──┼──────────────────────►  Cloudflare Worker
+            │  POST /webhook/telegram        │
+ Discord ───┘  POST /webhook/discord         ▼
+                                    ┌───────────────────┐
+                                    │  Adapter          │  xác minh, chuẩn hoá
+                                    │  (zalo/tg/discord)│  → IncomingMessage
+                                    └─────────┬─────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │  Router lệnh      │  /ping, /help, ...
+                                    └─────────┬─────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │  Adapter.reply()  │  gọi API của nền tảng
+                                    └───────────────────┘
+```
+
+Worker acknowledge với nền tảng trước, rồi chạy lệnh và gửi reply trong `ctx.waitUntil()`.
+
 ## Các layer
 
 | Layer | Vị trí | Trách nhiệm |

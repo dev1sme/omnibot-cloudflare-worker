@@ -12,6 +12,7 @@ Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement co
 | Acknowledgement | `ok()` | `ok()` | `{"type":5}` (ngoại lệ protocol) |
 | Giới hạn text | 2000 | 4096 | 2000 |
 | Group chat trong omnibot | Không | Có | Có (server) |
+| Đọc mọi tin nhắn | Có (chat 1-1) | Có | Không, chỉ slash command |
 | Thư viện gọi API | Client mỏng tự viết | grammY `Api` | `fetch`, kèm type từ `discord-api-types` |
 | Thư viện verify | `secretEquals` | `secretEquals` | `discord-interactions` |
 
