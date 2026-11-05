@@ -107,7 +107,7 @@ npx wrangler secret put DISCORD_PUBLIC_KEY
 
 `DISCORD_BOT_TOKEN` chỉ dùng cho script `register-discord`, nên **không** đưa lên Worker.
 
-Các script chạy trên máy local không đọc được secret đã deploy, nên cần thêm file `.dev.vars` (không commit). Xem [docs/operations.md](docs/operations.md#secret-cục-bộ).
+Các script chạy trên máy local không đọc được secret đã deploy, nên cần thêm file `.dev.vars.production` (không commit). Xem [docs/operations.md](docs/operations.md#secret-cục-bộ).
 
 Tạo KV namespace để lưu trạng thái:
 
@@ -161,17 +161,18 @@ Tạo file `src/commands/hello.ts`:
 
 ```ts
 import type { Command } from "../core/types";
+import { messages } from "../messages";
 
 export const hello: Command = {
   name: "hello",
   description: "Chào người dùng",
   async run(msg) {
-    return { text: `Xin chào ${msg.user.name ?? "bạn"} từ ${msg.platform}! 👋` };
+    return { text: messages.hello(msg.user.name ?? messages.defaultUserName, msg.platform) };
   },
 };
 ```
 
-Rồi đăng ký trong `src/commands/index.ts`:
+Nội dung trả lời đặt trong `src/messages/vi.ts`. Rồi đăng ký lệnh trong `src/commands/index.ts`:
 
 ```ts
 import { hello } from "./hello";
@@ -221,9 +222,13 @@ npm run dev          # wrangler dev, chạy tại http://localhost:8787
 cloudflared tunnel --url http://localhost:8787
 ```
 
-Sau đó chạy lại `set-webhooks` với URL tunnel.
+Sau đó đăng ký webhook cho bot dev:
 
-**Lưu ý:** bước này thay thế webhook production của bot. Nên dùng bot riêng cho môi trường dev.
+```bash
+WORKER_URL=https://<tunnel-host> npm run set-webhooks:dev
+```
+
+**Lưu ý:** không chạy `npm run set-webhooks` với URL tunnel, vì lệnh đó sẽ thay thế webhook production. Xem [docs/operations.md](docs/operations.md#môi-trường).
 
 ---
 
@@ -232,9 +237,10 @@ Sau đó chạy lại `set-webhooks` với URL tunnel.
 | Lệnh | Mô tả |
 |---|---|
 | `npm run dev` | Chạy local |
-| `npm run deploy` | Deploy lên Cloudflare |
-| `npm run set-webhooks` | Đăng ký webhook Zalo + Telegram |
-| `npm run register-discord` | Đăng ký slash command Discord |
+| `npm run deploy` | Deploy production (chỉ dùng cho lần đầu, sau đó qua CI) |
+| `npm run deploy:dev` | Deploy môi trường dev |
+| `npm run set-webhooks`, `set-webhooks:dev` | Đăng ký webhook Zalo + Telegram |
+| `npm run register-discord`, `register-discord:dev` | Đăng ký slash command Discord |
 | `npm run tail` | Xem log realtime (`wrangler tail`) |
 | `npm run lint` | Chạy ESLint |
 | `npm test` | Chạy test |

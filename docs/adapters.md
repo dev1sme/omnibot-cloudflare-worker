@@ -24,6 +24,7 @@ Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement co
 - `reply` PHẢI dùng `splitMessage(out.text, limit)` trong `src/lib/split-message.ts`.
 - `reply` PHẢI kiểm tra HTTP status và trường `ok` của nền tảng nếu có, rồi throw khi thất bại.
 - Adapter KHÔNG ĐƯỢC gọi `getUpdates` hay bất kỳ API polling nào.
+- Khi gửi thất bại, `reply` PHẢI throw `PlatformError` với HTTP status và mã lỗi của nền tảng. KHÔNG ĐƯỢC để lỗi gốc của SDK hay `fetch` đi ra ngoài adapter, vì có thể chứa URL có token.
 
 ### Chia nhỏ tin nhắn
 
@@ -33,6 +34,25 @@ Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement co
 - Ưu tiên ngắt ở dấu xuống dòng, sau đó đến dấu cách.
 - Không bao giờ tách đôi surrogate pair.
 - Không bao giờ trả về chunk rỗng.
+
+### Xử lý rate limit
+
+`reply` PHẢI dùng `retryOnRateLimit` trong `src/lib/retry.ts` cho từng lượt gửi.
+
+| Nền tảng | Tín hiệu | Thời gian chờ | Cách xử lý |
+| --- | --- | --- | --- |
+| Telegram | `429` | `parameters.retry_after`, đơn vị giây | Retry |
+| Discord | `429` | Header `Retry-After` hoặc `retry_after`, đơn vị giây | Retry |
+| Zalo | `429`, "Quota exceeded" | Tài liệu không có | Không retry, throw `PlatformError` |
+
+Quy tắc:
+
+- Chỉ retry `429` khi nền tảng cho biết thời gian chờ. KHÔNG ĐƯỢC retry các lỗi khác, vì có thể gửi trùng tin. Lần retry `PATCH` khi gặp 404 của Discord là ngoại lệ, xem mục Discord.
+- Tối đa 2 lần retry cho một request. Tổng thời gian chờ trong một lần `reply` tối đa 5 giây. Nếu vượt ngân sách này thì throw ngay, vì `waitUntil` chỉ có 30 giây.
+- Chỉ gửi lại chunk bị lỗi. KHÔNG ĐƯỢC gửi lại các chunk đã thành công.
+- KHÔNG ĐƯỢC hard-code rate limit của nền tảng, vì chúng có thể thay đổi.
+
+Telegram khuyến nghị không quá 1 tin mỗi giây trong một chat, và 20 tin mỗi phút trong group. Vì vậy lệnh NÊN tránh trả về nội dung bị chia thành nhiều chunk.
 
 ## Zalo
 

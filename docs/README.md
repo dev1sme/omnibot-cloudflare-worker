@@ -11,10 +11,11 @@ Repo chưa có code, nên đây là spec được viết trước khi implement.
 | [architecture.md](architecture.md) | Các layer, quy tắc phụ thuộc, vòng đời request |
 | [contracts.md](contracts.md) | Type dùng chung, hành vi HTTP, cơ chế delivery |
 | [adapters.md](adapters.md) | Yêu cầu theo từng nền tảng, cách thêm nền tảng |
-| [commands.md](commands.md) | Cách viết và đăng ký lệnh |
+| [commands.md](commands.md) | Cách viết lệnh, nội dung trả lời, phân quyền |
 | [security.md](security.md) | Xác minh webhook, secret, logging |
-| [operations.md](operations.md) | Cài đặt, deploy, phát triển local, giới hạn nền tảng |
-| [conventions.md](conventions.md) | Code style, test, commit, Definition of Done |
+| [operations.md](operations.md) | Môi trường, deploy, CI/CD, phát triển local, giới hạn nền tảng |
+| [conventions.md](conventions.md) | Code style, thư viện, logging, test, commit, Definition of Done |
+| [decisions.md](decisions.md) | Lý do của các quyết định quan trọng |
 
 ## Cách đọc quy tắc
 
@@ -41,6 +42,8 @@ Cập nhật bảng này trong pull request làm thay đổi trạng thái của
 | Adapter Telegram | Planned |
 | Adapter Discord (slash command) | Planned |
 | Script `set-webhooks`, `register-discord` | Planned |
+| Môi trường dev và CI/CD | Planned |
+| Lệnh admin | Planned |
 
 ## Thông tin từ bên ngoài
 
@@ -65,4 +68,8 @@ Các mục sau chưa được xác nhận. Hãy xác nhận từng mục khi imp
 - Tài liệu `discord-interactions` không nêu hỗ trợ Workers, và trang đã đọc của Cloudflare không nêu Ed25519 trong `crypto.subtle`. Mã nguồn thư viện có nhánh dành cho Workers, nhưng cần test thật.
 - Tài liệu grammY không nói rõ `Api` dùng độc lập được, và không nói lỗi có chứa token hay URL hay không. Cần kiểm tra mã nguồn và test trên Workers.
 - `grammy` phụ thuộc `node-fetch` và `abort-controller`. Cần đo bundle và CPU với giới hạn 10 ms của free tier.
-- Trang Hono đã đọc không nhắc `c.executionCtx`. Cần xác nhận trong API docs của Hono.
+- Chưa xác nhận `tsx` nhận cờ `--env-file` như Node.js, vì trang tài liệu của `tsx` không tải được. Nếu không được, dùng `node --env-file=<file> --import tsx <script>`.
+- Tài liệu Cloudflare ghi `wrangler secret put <KEY> -env`, nhiều khả năng là lỗi chính tả của `--env`. Cần chạy thử.
+- `npx wrangler rollback` được viết theo trí nhớ, chưa đối chiếu tài liệu.
+- `retry_after` của Telegram được đọc từ bản tóm tắt của tool, chưa đối chiếu nguyên văn. Zalo không có hướng dẫn retry khi gặp `429`.
+- Rule `camelcase` của ESLint đang bị đóng băng. Chưa kiểm tra `@typescript-eslint/naming-convention` để thay thế.

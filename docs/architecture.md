@@ -11,7 +11,8 @@ omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic
 | Core | `src/core/` | Type, pipeline, router và response envelope, không biết nền tảng hay lệnh cụ thể |
 | Adapter | `src/adapters/<name>/` | Xác minh, parse, acknowledge và reply cho một nền tảng |
 | Command | `src/commands/` | Logic không phụ thuộc nền tảng |
-| Library | `src/lib/` | Helper dùng chung như `splitMessage` và `secretEquals` |
+| Messages | `src/messages/` | Nội dung bot gửi cho người dùng |
+| Library | `src/lib/` | Helper dùng chung như `splitMessage`, `secretEquals` và `log` |
 | Script | `scripts/` | Tác vụ cài đặt chạy một lần trên máy developer |
 
 ## Quy tắc phụ thuộc
@@ -19,14 +20,16 @@ omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic
 | Module | CÓ THỂ import |
 | --- | --- |
 | `src/app.ts` | Tất cả các layer trong `src/` |
-| `src/core/` | `src/lib/` |
+| `src/core/` | `src/lib/`, `src/messages/` |
 | `src/adapters/<name>/` | `src/core/types.ts`, `src/core/response.ts`, `src/lib/`, file trong chính thư mục của nó |
-| `src/commands/` | `src/core/types.ts`, `src/lib/` |
+| `src/commands/` | `src/core/types.ts`, `src/lib/`, `src/messages/` |
 | `src/lib/` | Không import layer nào |
+| `src/messages/` | Không import layer nào |
 | `scripts/` | `src/commands/`, `src/core/types.ts` |
 
 - Adapter KHÔNG ĐƯỢC import adapter khác. Phần dùng chung phải chuyển vào `src/lib/`.
 - Code của Worker KHÔNG ĐƯỢC import từ `scripts/`.
+- File lệnh KHÔNG ĐƯỢC import `src/commands/index.ts`, vì sẽ gây circular import. Lệnh cần danh sách lệnh thì đọc `deps.commands`.
 - Command KHÔNG NÊN đọc `msg.raw` hoặc rẽ nhánh hành vi theo `msg.platform`. Hiển thị tên nền tảng thì được.
 - Thư viện của một nền tảng chỉ được import trong thư mục adapter đó.
 
@@ -58,8 +61,15 @@ src/
 │   ├── index.ts            # Command registry
 │   ├── ping.ts
 │   └── help.ts
+├── messages/
+│   ├── index.ts            # Active catalog
+│   └── vi.ts
 └── lib/
+    ├── is-admin.ts
+    ├── log.ts
     ├── parse-json.ts
+    ├── platform-error.ts
+    ├── retry.ts
     ├── secret-equals.ts
     └── split-message.ts
 scripts/
@@ -86,7 +96,7 @@ app.all("/webhook/:platform", (c) => {
 
 app.notFound(() => fail("NOT_FOUND"));
 app.onError((error) => {
-  logUnexpectedError(error);
+  log.error("unexpected_error", errorFields(error));
   return fail("INTERNAL_ERROR");
 });
 ```
@@ -117,7 +127,7 @@ async function handleWebhook(
   const route = resolve(parsed.msg.text, commands);
   if (route.kind === "none") return ok();
 
-  ctx.waitUntil(execute(route, parsed.msg, adapter, env, ctx));
+  ctx.waitUntil(execute(route, parsed.msg, adapter, commands, env, ctx));
   return adapter.ack(parsed.msg);
 }
 ```
@@ -143,26 +153,37 @@ Vì vậy mọi nền tảng đi chung một luồng: acknowledge trước, sau 
 `execute` chạy sau khi response đã được trả về, nên không còn gì bắt được lỗi của nó. Hàm này KHÔNG ĐƯỢC reject.
 
 ```ts
-async function execute(route, msg, adapter, env, ctx) {
+async function execute(route, msg, adapter, commands, env, ctx) {
+  const fields = { platform: msg.platform, command: commandName(route) };
+
   let out: OutgoingMessage;
   try {
-    out = route.kind === "unknown"
-      ? UNKNOWN_COMMAND_REPLY
-      : await route.command.run(msg, { env, ctx });
+    out = await runRoute(route, msg, { env, ctx, commands });
   } catch (error) {
-    logError("command_failed", msg, error);
-    out = COMMAND_FAILED_REPLY;
+    log.error("command_failed", { ...fields, ...errorFields(error) });
+    out = { text: messages.commandFailed };
   }
 
   try {
     await adapter.reply(msg, out, env);
   } catch (error) {
-    logError("reply_failed", msg, error);
+    log.error("reply_failed", { ...fields, ...errorFields(error) });
   }
+}
+
+function runRoute(route, msg, deps) {
+  if (route.kind === "unknown") return { text: messages.unknownCommand };
+  if (
+    route.command.permission === "admin" &&
+    !isAdmin(msg.platform, msg.user.id, deps.env.ADMIN_USER_IDS)
+  ) {
+    return { text: messages.permissionDenied };
+  }
+  return route.command.run(msg, deps);
 }
 ```
 
-`logError` PHẢI tuân theo quy tắc logging trong [security.md](security.md).
+Logging PHẢI theo [conventions.md](conventions.md#logging) và [security.md](security.md#logging).
 
 ## Ngoài phạm vi
 

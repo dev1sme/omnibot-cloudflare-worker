@@ -61,8 +61,11 @@ openssl rand -hex 32
 | `DISCORD_APP_ID` | Có | `register-discord` |
 | `DISCORD_PUBLIC_KEY` | Có | Không |
 | `DISCORD_BOT_TOKEN` | **Không** | `register-discord` |
+| `ADMIN_USER_IDS` | Có | Không |
 
 - Secret đã deploy PHẢI được đặt bằng `npx wrangler secret put`.
+- Dev và production PHẢI dùng bot, secret và KV khác nhau.
+- `CLOUDFLARE_API_TOKEN` PHẢI nằm trong secret của CI, chỉ có quyền tối thiểu để deploy, và KHÔNG ĐƯỢC commit.
 - Secret KHÔNG ĐƯỢC xuất hiện trong `[vars]` của `wrangler.toml`, trong source code, hoặc trong commit.
 - `.dev.vars*` và `.env*` PHẢI có trong `.gitignore`.
 - Worker KHÔNG ĐƯỢC giữ secret mà nó không dùng.
@@ -85,11 +88,11 @@ Log KHÔNG ĐƯỢC chứa:
 - Interaction token của Discord
 - Nội dung tin nhắn hoặc `msg.raw`
 
-Log CÓ THỂ chứa tên nền tảng, tên lệnh, chat ID, response status, và thông báo lỗi đã được làm sạch. Log entry NÊN chỉ chứa ID khi cần cho việc debug.
+Log CÓ THỂ chứa tên nền tảng, tên lệnh, chat ID, response status, và mã lỗi của nền tảng. Format xem [conventions.md](conventions.md#logging). Log entry NÊN chỉ chứa ID khi cần cho việc debug.
 
 Coi lỗi từ `fetch` và SDK là nhạy cảm. Hãy log status và mã lỗi của nền tảng, không log nguyên object lỗi.
 
-Ví dụ, với lỗi của grammY:
+Adapter PHẢI chuyển lỗi gốc thành `PlatformError` trước khi throw. Ví dụ, với lỗi của grammY:
 
 - `GrammyError`: chỉ log `error_code` và `method`. Không log `payload`, vì trường này chứa dữ liệu request.
 - `HttpError`: chỉ log tên lỗi. Không log `error` hay `message`, vì tài liệu không đảm bảo chúng không chứa URL có token.

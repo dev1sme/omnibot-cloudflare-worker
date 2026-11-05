@@ -4,7 +4,7 @@
 
 Tài liệu trong `docs/`, `CLAUDE.md` và `README.md` viết bằng tiếng Việt, thuật ngữ kỹ thuật giữ tiếng Anh.
 
-Code, comment, identifier và commit message PHẢI viết bằng tiếng Anh. Câu trả lời của bot CÓ THỂ dùng tiếng Việt.
+Code, comment, identifier và commit message PHẢI viết bằng tiếng Anh. Câu trả lời của bot mặc định là tiếng Việt và nằm trong `src/messages/`.
 
 ## TypeScript
 
@@ -96,7 +96,43 @@ const MAX_TEXT_LENGTH = 4096;
 
 - `verify` và `parse` trả về giá trị khi thất bại, không throw.
 - `reply` và lệnh throw khi thất bại. Pipeline bắt và ghi log lỗi.
+- `reply` PHẢI throw `PlatformError`, không để lỗi gốc của SDK đi ra ngoài adapter.
 - Không nuốt lỗi mà không ghi log. Logging tuân theo [security.md](security.md).
+
+## Logging
+
+Mọi log PHẢI đi qua `log` trong `src/lib/log.ts`. KHÔNG ĐƯỢC gọi `console` trực tiếp. Mỗi entry là một object JSON để Workers Logs tự trích xuất field.
+
+```ts
+log.error("reply_failed", {
+  platform: "telegram",
+  command: "ping",
+  status: 429,
+  error_code: 429,
+});
+```
+
+| Field | Ý nghĩa |
+| --- | --- |
+| `level` | `info`, `warn` hoặc `error`, do `log` tự thêm |
+| `event` | Tên sự kiện `snake_case`, cố định |
+| `platform` | Tên adapter |
+| `command` | Tên lệnh, nếu có |
+| `status` | HTTP status từ nền tảng, nếu có |
+| `error_code` | Mã lỗi của nền tảng, nếu có |
+| `error_name` | Tên class của lỗi |
+
+| Event | Level | Khi nào |
+| --- | --- | --- |
+| `verify_failed` | `warn` | Xác minh request thất bại |
+| `command_failed` | `error` | Lệnh throw |
+| `reply_failed` | `error` | Không gửi được tin trả lời |
+| `reply_rate_limited` | `warn` | Gặp `429` và sẽ retry |
+| `unexpected_error` | `error` | Lỗi trong `app.onError` |
+
+- `errorFields(error)` chỉ trả `status` và `error_code` từ `PlatformError`, còn với lỗi khác chỉ trả `error_name`. KHÔNG ĐƯỢC log `error.message`, vì có thể chứa token hoặc nội dung tin nhắn.
+- Không log theo từng request thành công. Workers Logs đã ghi invocation và free tier có giới hạn.
+- Nội dung bị cấm log nằm trong [security.md](security.md#logging).
 
 ## Test
 
@@ -111,6 +147,10 @@ Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 | `parse` | Từng dòng trong bảng parse của adapter, cộng JSON sai định dạng |
 | `reply` | Cấu trúc request, chia tin dài, throw khi nền tảng từ chối |
 | Response | `ok()` và `fail()` đúng shape, status và `message` cố định theo `code` |
+| Rate limit | Retry đúng thời gian chờ, dừng khi vượt ngân sách, không gửi lại chunk đã thành công, Zalo không retry |
+| Phân quyền | Admin chạy được, người khác bị từ chối, thiếu `ADMIN_USER_IDS` thì không ai là admin, sai nền tảng thì không khớp |
+| `/help` | Chỉ liệt kê lệnh người dùng có quyền chạy |
+| `log` | `errorFields` không chứa `message`, URL hay payload |
 | Router | Từng dòng trong bảng routing ở [commands.md](commands.md) |
 | `splitMessage` | Đúng giới hạn, vượt giới hạn một đơn vị, không tách surrogate pair, không có chunk rỗng |
 | Danh sách lệnh | Quy tắc tên và mô tả, tên không trùng |
@@ -146,7 +186,9 @@ fix(discord): retry first reply edit on 404
 
 Một thay đổi hoàn thành khi thoả tất cả điều kiện sau:
 
-- [ ] `npm run lint` và `npm test` đều pass.
+- [ ] `npm run lint` và `npm test` đều pass, và CI xanh.
+- [ ] Nội dung gửi cho người dùng nằm trong `src/messages/`.
+- [ ] Lệnh có tác động lớn đã đặt `permission: "admin"`.
 - [ ] Test bao phủ hành vi mới và các nhánh thất bại của nó.
 - [ ] Các quy tắc phụ thuộc trong [architecture.md](architecture.md) vẫn đúng.
 - [ ] Log không chứa secret, token, hay nội dung tin nhắn.

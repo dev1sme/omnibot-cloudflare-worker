@@ -13,6 +13,7 @@ export interface Env {
   TELEGRAM_BOT_USERNAME?: string;
   DISCORD_APP_ID?: string;
   DISCORD_PUBLIC_KEY?: string;
+  ADMIN_USER_IDS?: string;
 }
 
 export interface IncomingMessage {
@@ -46,11 +47,13 @@ export interface Adapter {
 export interface CommandDeps {
   env: Env;
   ctx: ExecutionContext;
+  commands: readonly Command[];
 }
 
 export interface Command {
   name: string;
   description: string;
+  permission?: "everyone" | "admin"; // Defaults to "everyone"
   run(msg: IncomingMessage, deps: CommandDeps): Promise<OutgoingMessage>;
 }
 

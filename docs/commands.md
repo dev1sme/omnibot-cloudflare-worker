@@ -8,12 +8,13 @@ Tạo `src/commands/hello.ts`:
 
 ```ts
 import type { Command } from "../core/types";
+import { messages } from "../messages";
 
 export const hello: Command = {
   name: "hello",
   description: "Chào người dùng",
   async run(msg) {
-    return { text: `Xin chào ${msg.user.name ?? "bạn"} từ ${msg.platform}!` };
+    return { text: messages.hello(msg.user.name ?? messages.defaultUserName, msg.platform) };
   },
 };
 ```
@@ -26,6 +27,25 @@ export const commands = [ping, help, hello];
 ```
 
 Với Discord, chạy `npm run register-discord` để slash command xuất hiện.
+
+### Lệnh cần danh sách lệnh
+
+Lệnh như `/help` đọc `deps.commands`. KHÔNG ĐƯỢC import `src/commands/index.ts` từ file lệnh, vì sẽ gây circular import.
+
+```ts
+export const help: Command = {
+  name: "help",
+  description: "Danh sách lệnh",
+  async run(msg, { commands, env }) {
+    const visible = commands.filter(
+      (c) =>
+        c.permission !== "admin" ||
+        isAdmin(msg.platform, msg.user.id, env.ADMIN_USER_IDS),
+    );
+    return { text: visible.map((c) => `/${c.name}: ${c.description}`).join("\n") };
+  },
+};
+```
 
 ## Quy tắc đặt tên
 
@@ -70,6 +90,47 @@ Lệnh đọc tham số bằng cách parse `msg.text`. Phần text sau tên lệ
 - `text` không dùng định dạng riêng của nền tảng.
 - Lệnh có side effect PHẢI chịu được việc nhận trùng. Xem [contracts.md](contracts.md).
 
+## Nội dung trả lời
+
+Nội dung bot gửi cho người dùng PHẢI nằm trong `src/messages/`, không viết trực tiếp trong lệnh hoặc pipeline. Riêng `description` của lệnh viết trong file lệnh.
+
+```ts
+// src/messages/vi.ts
+export const messages = {
+  defaultUserName: "bạn",
+  hello: (name: string, platform: string) => `Xin chào ${name} từ ${platform}!`,
+  unknownCommand: "Không có lệnh này. Gõ /help để xem danh sách lệnh.",
+  commandFailed: "Đã có lỗi xảy ra. Vui lòng thử lại sau.",
+  permissionDenied: "Bạn không có quyền dùng lệnh này.",
+};
+
+// src/messages/index.ts
+export { messages } from "./vi";
+```
+
+Hiện chỉ có tiếng Việt, nên chưa dùng thư viện i18n. Khi cần thêm ngôn ngữ:
+
+1. Thêm `src/messages/<locale>.ts` với cùng shape.
+2. Lưu ngôn ngữ của người dùng trong KV, key `user:<platform>:<id>:lang`.
+3. Chọn thư viện i18n theo [conventions.md](conventions.md#thư-viện) nếu cần số nhiều hoặc định dạng phức tạp.
+
+## Phân quyền
+
+Lệnh mặc định ai cũng dùng được. Lệnh có tác động lớn, như broadcast hoặc đổi cấu hình, PHẢI đặt `permission: "admin"`.
+
+`ADMIN_USER_IDS` là danh sách `<platform>:<user_id>` phân tách bằng dấu phẩy:
+
+```bash
+ADMIN_USER_IDS="telegram:123456,discord:987654,zalo:6ede9afa66b88fe6d6a9"
+```
+
+- Pipeline kiểm tra quyền trước khi chạy lệnh. Lệnh không tự kiểm tra.
+- PHẢI fail closed: thiếu `ADMIN_USER_IDS` thì không ai là admin.
+- ID PHẢI có tên nền tảng, vì ID chỉ là duy nhất trong một nền tảng.
+- Chỉ lấy `msg.user.id` từ payload đã qua `verify`. KHÔNG ĐƯỢC lấy danh tính từ nội dung tin nhắn.
+- Quyền admin của group hay server trên nền tảng không được coi là quyền admin của omnibot.
+- Slash command Discord vẫn hiện với mọi người, nên kiểm tra phía server là bắt buộc.
+
 ## Trạng thái
 
 Dùng `deps.env.OMNIBOT_KV` cho dữ liệu đọc nhiều, ghi ít.
@@ -78,7 +139,7 @@ Dùng `deps.env.OMNIBOT_KV` cho dữ liệu đọc nhiều, ghi ít.
 async run(msg, { env }) {
   const key = `user:${msg.platform}:${msg.user.id}:lang`;
   const lang = await env.OMNIBOT_KV.get(key);
-  return { text: lang ? `Ngôn ngữ: ${lang}` : "Chưa đặt ngôn ngữ" };
+  return { text: lang ? messages.language(lang) : messages.languageNotSet };
 }
 ```
 
