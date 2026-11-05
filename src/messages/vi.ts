@@ -1,3 +1,4 @@
+// test-exempt: text only. Commands and the pipeline assert how it is used.
 export const messages = {
   pong: "pong 🏓",
   unknownCommand: "Không có lệnh này. Gõ /help để xem danh sách lệnh.",

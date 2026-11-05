@@ -3,6 +3,7 @@ import type { ParseResult } from "../../core/types";
 import { parseJson } from "../../lib/parse-json";
 import { CommandSchema, PingSchema } from "./schema";
 
+// Platform protocol response: must not use the envelope.
 const PONG = 1;
 
 export function parse(rawBody: string): ParseResult {

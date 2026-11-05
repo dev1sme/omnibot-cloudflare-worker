@@ -14,6 +14,20 @@ Code, comment, identifier và commit message PHẢI viết bằng tiếng Anh. C
 - Dùng named export. Default export duy nhất là Worker handler trong `src/index.ts`, do runtime yêu cầu.
 - Dùng Web API (`fetch`, `crypto.subtle`, `Response`). Không thêm API chỉ có trên Node.js vào code của Worker.
 
+## Ngoại lệ
+
+Mọi ngoại lệ so với một quy tắc PHẢI được đánh dấu ngay tại chỗ, kèm lý do rõ ràng:
+
+| Loại | Cách đánh dấu |
+| --- | --- |
+| Không có file test | `// test-exempt: <lý do>` ở đầu file |
+| Test nhiều layer | `// test-cross-layer: <lý do>` ở đầu file |
+| Code làm khác quy tắc | Comment ngay trên dòng đó, nêu lý do |
+| Rule ESLint được tắt | Comment ngay trên cấu hình hoặc dòng đó, nêu lý do |
+| Quy tắc trong tài liệu có ngoại lệ | Ghi rõ ngay trong quy tắc đó |
+
+Ngoại lệ không có đánh dấu và lý do được coi là lỗi, kể cả khi code vẫn chạy đúng. Quyết định lớn ghi thêm vào [decisions.md](decisions.md).
+
 ## Thư viện
 
 NÊN dùng thư viện thay vì tự viết, nếu có thư viện đạt các điều kiện dưới đây. KHÔNG ĐƯỢC tự viết crypto.
@@ -143,7 +157,7 @@ log.error("reply_failed", {
 
 Stack là Vitest với `@cloudflare/vitest-plugin`, để test chạy trong Workers runtime.
 
-Test PHẢI nằm trong `test/` và mirror theo đường dẫn của code. Mỗi file nguồn có logic có một file test riêng:
+Test PHẢI nằm trong `test/` và mirror theo đường dẫn của code. Mọi file `.ts` trong `src/` và `scripts/` PHẢI có một file test riêng, hoặc được đánh dấu miễn trừ:
 
 | Code | Test |
 | --- | --- |
@@ -152,8 +166,9 @@ Test PHẢI nằm trong `test/` và mirror theo đường dẫn của code. Mỗ
 | `scripts/lib/set-webhooks.ts` | `test/scripts/lib/set-webhooks.test.ts` |
 
 - KHÔNG ĐƯỢC đặt file `.test.ts` trong `src/` hoặc `scripts/`.
-- Test nhiều layer đặt ở gốc `test/`, ví dụ `test/worker.test.ts`.
-- File chỉ khai báo type, schema hoặc dữ liệu thì không cần test riêng.
+- File được miễn trừ PHẢI có comment `// test-exempt: <lý do>`. Chỉ miễn trừ file không có logic riêng: type, schema, text, re-export, hoặc entry point chỉ gọi vào `lib/`.
+- Test không ứng với một file nguồn PHẢI có comment `// test-cross-layer: <lý do>`, ví dụ `test/worker.test.ts`.
+- `npm run lint` chạy `scripts/check-test-mirror.ts` và báo lỗi nếu vi phạm các quy tắc này, nên CI cũng chặn.
 
 Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 

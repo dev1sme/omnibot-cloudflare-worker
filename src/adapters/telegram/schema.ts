@@ -1,3 +1,4 @@
+// test-exempt: declarative schema. Behavior is covered by test/adapters/telegram/parse.test.ts.
 import * as v from "valibot";
 
 export const UpdateSchema = v.object({

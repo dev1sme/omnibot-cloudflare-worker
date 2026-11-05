@@ -1,3 +1,4 @@
+// test-exempt: declares types only, so it has no runtime behavior.
 export interface Env {
   OMNIBOT_KV: KVNamespace;
   WEBHOOK_SECRET?: string;

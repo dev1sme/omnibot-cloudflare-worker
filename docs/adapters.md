@@ -38,7 +38,7 @@ Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement co
 
 ### Xử lý rate limit
 
-`reply` PHẢI dùng `retryOnRateLimit` trong `src/lib/retry.ts` cho từng lượt gửi.
+`reply` PHẢI dùng `retryOnRateLimit` trong `src/lib/retry.ts` cho từng lượt gửi. Ngoại lệ: Zalo không dùng, vì tài liệu của Zalo không cho biết thời gian chờ.
 
 | Nền tảng | Tín hiệu | Thời gian chờ | Cách xử lý |
 | --- | --- | --- | --- |

@@ -17,7 +17,7 @@
     "set-webhooks:dev": "tsx --env-file=.dev.vars.dev scripts/set-webhooks.ts",
     "register-discord": "tsx --env-file=.dev.vars.production scripts/register-discord.ts",
     "register-discord:dev": "tsx --env-file=.dev.vars.dev scripts/register-discord.ts",
-    "lint": "eslint . && tsc --noEmit",
+    "lint": "eslint . && tsc --noEmit && tsx scripts/check-test-mirror.ts",
     "test": "vitest run"
   },
   "dependencies": {

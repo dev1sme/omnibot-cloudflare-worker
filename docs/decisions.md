@@ -26,3 +26,4 @@ Khi thay đổi một quyết định, không xoá mục cũ. Đổi trạng th�
 | D18 | Nội dung trả lời gom vào `src/messages/`, chưa dùng thư viện i18n | Hiện chỉ có một ngôn ngữ, nhưng thêm ngôn ngữ sau này không phải sửa từng lệnh | Viết text trực tiếp trong lệnh, hoặc cài i18n ngay | Active |
 | D19 | `README.md` ở root chỉ giới thiệu ngắn và trỏ về `docs/` | Mỗi thông tin chỉ nằm ở một nơi, tránh hai bản bị lệch nhau | Giữ quick start và các bảng trong README ở root | Active |
 | D20 | Test nằm trong `test/`, mirror theo `src/` và `scripts/` | `src/` chỉ chứa code chạy thật, và mỗi file nguồn có một file test dễ đoán đường dẫn | Đặt test cạnh code | Active |
+| D21 | Ngoại lệ phải được đánh dấu tại chỗ, và mirror test được kiểm tra tự động | Quy tắc chỉ có giá trị khi được áp dụng nhất quán, và đánh dấu tại chỗ không bị lệch như một danh sách riêng | Ghi danh sách ngoại lệ trong tài liệu | Active |

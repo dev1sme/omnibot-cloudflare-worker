@@ -1,3 +1,4 @@
+// test-exempt: declarative schema. Behavior is covered by test/adapters/zalo/parse.test.ts.
 import * as v from "valibot";
 
 export const TextEventSchema = v.object({

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { errorFields } from "../../src/lib/log";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { errorFields, log } from "../../src/lib/log";
 import { PlatformError } from "../../src/lib/platform-error";
 
 describe("errorFields", () => {
@@ -12,5 +12,15 @@ describe("errorFields", () => {
     const fields = errorFields(new Error("https://api.telegram.org/botTOKEN/sendMessage"));
     expect(JSON.stringify(fields)).not.toContain("TOKEN");
     expect(errorFields("text")).toEqual({ error_name: "UnknownError" });
+  });
+});
+
+describe("log", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(["info", "warn", "error"] as const)("writes a %s entry as an object", (level) => {
+    const spy = vi.spyOn(console, level).mockImplementation(() => {});
+    log[level]("some_event", { platform: "zalo" });
+    expect(spy).toHaveBeenCalledWith({ level, event: "some_event", platform: "zalo" });
   });
 });

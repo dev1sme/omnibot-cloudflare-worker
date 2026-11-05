@@ -1,3 +1,4 @@
+// test-exempt: declarative schema. Behavior is covered by test/adapters/discord/parse.test.ts.
 import * as v from "valibot";
 
 const UserSchema = v.object({

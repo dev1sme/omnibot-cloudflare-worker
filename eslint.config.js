@@ -11,6 +11,7 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
+  // Exception: log.ts is the only logger, and scripts print to a terminal, not Workers Logs.
   {
     files: ["src/lib/log.ts", "scripts/**"],
     rules: { "no-console": "off" },
