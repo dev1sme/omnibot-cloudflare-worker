@@ -46,6 +46,11 @@ Chỉ tự viết khi thoả một trong hai điều kiện, và PHẢI nêu lý
 | Chữ ký Discord | `discord-interactions` | Chỉ dùng `verifyKey` |
 | Type của Discord | `discord-api-types` | Chỉ dùng type |
 
+Hai dev dependency không dùng bản mới nhất, vì tool khác chưa hỗ trợ:
+
+- `typescript` giữ `~6.0`, vì `typescript-eslint` `8.72.1` yêu cầu `<6.1.0`.
+- `vitest` giữ `^4.1`. `@cloudflare/vitest-plugin` đã hỗ trợ `^5.0`, nên có thể nâng khi cần.
+
 Muốn đổi hoặc thêm thư viện vào bảng này thì sửa tài liệu trong cùng pull request.
 
 ## Đặt tên
@@ -82,7 +87,7 @@ const msg = { messageId: String(output.message_id) /* ... */ };
 - `IncomingMessage`, `OutgoingMessage` và các type dùng chung KHÔNG ĐƯỢC chứa field `snake_case` của nền tảng.
 - Code ngoài `src/adapters/<name>/` KHÔNG ĐƯỢC đọc field `snake_case` của nền tảng.
 - Field nhiều từ trong envelope PHẢI viết `snake_case`, kể cả trong type khai báo envelope.
-- Nếu bật rule `camelcase` của ESLint, PHẢI đặt `properties: "never"` để không báo lỗi các field JSON.
+- Không bật rule `camelcase` của ESLint. Rule này đã bị đóng băng, và sẽ báo lỗi các field JSON.
 
 ## Hằng số
 
@@ -130,7 +135,7 @@ log.error("reply_failed", {
 | `reply_rate_limited` | `warn` | Gặp `429` và sẽ retry |
 | `unexpected_error` | `error` | Lỗi trong `app.onError` |
 
-- `errorFields(error)` chỉ trả `status` và `error_code` từ `PlatformError`, còn với lỗi khác chỉ trả `error_name`. KHÔNG ĐƯỢC log `error.message`, vì có thể chứa token hoặc nội dung tin nhắn.
+- `errorFields(error)` trả `error_name`, cộng thêm `status` và `error_code` nếu là `PlatformError`. KHÔNG ĐƯỢC log `error.message`, vì có thể chứa token hoặc nội dung tin nhắn.
 - Không log theo từng request thành công. Workers Logs đã ghi invocation và free tier có giới hạn.
 - Nội dung bị cấm log nằm trong [security.md](security.md#logging).
 

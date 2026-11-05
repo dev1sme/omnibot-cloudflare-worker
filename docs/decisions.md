@@ -13,7 +13,7 @@ Khi thay đổi một quyết định, không xoá mục cũ. Đổi trạng th�
 | D5 | Worker không giữ `DISCORD_BOT_TOKEN` | Chỉ script cần token này, nên giữ trên Worker chỉ làm tăng rủi ro | Đưa mọi secret lên Worker | Active |
 | D6 | Ưu tiên thư viện, không tự viết crypto | Giảm code phải bảo trì và rủi ro bảo mật | Giữ dependency ở mức tối thiểu | Active |
 | D7 | Chọn Valibot | Nhẹ hơn Zod, phù hợp giới hạn CPU và startup của Workers | Zod | Active |
-| D8 | Chỉ dùng `Api` của grammY và `verifyKey` của `discord-interactions` | `Bot`, `webhookCallback` và middleware kiểu Express không hợp với pipeline | Dùng cả framework của SDK | Active, cần test trên Workers |
+| D8 | Chỉ dùng `Api` của grammY và `verifyKey` của `discord-interactions` | `Bot`, `webhookCallback` và middleware kiểu Express không hợp với pipeline | Dùng cả framework của SDK | Active, đã test trên Workers |
 | D9 | Zalo dùng client mỏng tự viết | Chỉ có SDK cộng đồng chưa đánh giá, chúng sẽ giữ bot token, và omnibot chỉ cần hai API | Dùng SDK cộng đồng | Active |
 | D10 | Mỗi nền tảng một thư mục trong `src/adapters/` | Thêm nền tảng không phải sửa code của nền tảng khác | Một file cho mỗi adapter | Active |
 | D11 | Response envelope theo chuẩn của `project-member-status` | Thống nhất format giữa các dự án, thuận tiện debug và làm API sau này | Format `{ ok }` riêng | Active |

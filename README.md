@@ -4,7 +4,7 @@ Một Cloudflare Worker duy nhất điều khiển nhiều bot chat: **Zalo**, *
 
 Không cần server hay VPS, và chạy được trên free tier của Cloudflare Workers.
 
-> **Trạng thái:** đang ở giai đoạn thiết kế, chưa có code.
+> **Trạng thái:** đã có code và test, nhưng chưa chạy với bot thật.
 
 ## ✨ Tính năng
 
