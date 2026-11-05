@@ -229,13 +229,17 @@ Khi bản deploy có lỗi, chạy `npx wrangler rollback`, rồi sửa bằng p
 | Kích thước Worker | 64 MiB chưa nén | Kiểm tra bằng `npx wrangler deploy --outdir bundled/ --dry-run` |
 | Subrequest | 50 mỗi invocation | Reply dài tốn một subrequest cho mỗi chunk |
 | `waitUntil` | 30 giây sau response, dùng chung trong một request | Đặt timeout cho lời gọi ra ngoài |
-| Workers Logs | 200.000 mỗi ngày, lưu 3 ngày | Không log theo từng request. Cloudflare đổi cách tính phí log từ 2026-12-01, cần kiểm tra lại |
+| Workers Logs đến hết 2026-11-30 | 200.000 log event mỗi ngày, lưu 3 ngày | Một request có một `console.log` tính là 2 event |
+| Workers Logs từ 2026-12-01 | 0,5 GB mỗi ngày trên toàn account, lưu 7 ngày | Hết hạn mức thì ngừng ghi log đến 00:00 UTC, và không mua thêm được trên Free |
+| Kích thước log | 256 KB | Không log payload lớn |
 | Lượt đọc KV | 100.000 mỗi ngày | |
 | Lượt ghi KV | 1.000 mỗi ngày trên các key khác nhau, 1 mỗi giây trên một key | Không ghi theo từng tin nhắn |
 | Key / value KV | 512 byte / 25 MiB | |
 | Lan truyền KV | Từ 60 giây trở lên | Không dựa vào đọc ngay sau khi ghi |
 
 Webhook Telegram cũng phải dùng cổng 443, 80, 88 hoặc 8443. URL `workers.dev` mặc định dùng 443.
+
+Hạn mức log từ 2026-12-01 dùng chung với mọi Worker và các dịch vụ observability khác trong account. Việc chuyển đổi là tự động, Worker vẫn phải tuân theo các quy tắc log trong [conventions.md](conventions.md#logging). `wrangler tail` xem log realtime và không lưu log.
 
 ## Xử lý sự cố
 
