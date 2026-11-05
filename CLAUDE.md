@@ -1,29 +1,29 @@
 # omnibot
 
-One Cloudflare Worker that runs chat bots on Zalo, Telegram, and Discord.
+Một Cloudflare Worker chạy bot chat trên Zalo, Telegram và Discord.
 
-The standards in `docs/` are mandatory. Start with `docs/README.md`, which explains the rule keywords and which document wins in a conflict.
+Các chuẩn trong `docs/` là bắt buộc. Hãy bắt đầu từ `docs/README.md`, nơi giải thích từ khoá quy tắc và tài liệu nào được ưu tiên khi có mâu thuẫn.
 
-## Read before changing
+## Đọc trước khi sửa
 
-| Task | Read |
+| Việc | Cần đọc |
 | --- | --- |
-| Pipeline, routes, or types | `docs/architecture.md`, `docs/contracts.md` |
-| Adapter or new platform | `docs/adapters.md`, `docs/security.md` |
-| Command | `docs/commands.md` |
-| Deployment, secrets, or scripts | `docs/operations.md`, `docs/security.md` |
-| Any code | `docs/conventions.md` |
+| Pipeline, route hoặc type | `docs/architecture.md`, `docs/contracts.md` |
+| Adapter hoặc nền tảng mới | `docs/adapters.md`, `docs/security.md` |
+| Lệnh | `docs/commands.md` |
+| Deploy, secret hoặc script | `docs/operations.md`, `docs/security.md` |
+| Mọi thay đổi code | `docs/conventions.md` |
 
-## Rules that are easy to break
+## Các quy tắc dễ vi phạm
 
-- Read the request body once in the pipeline. Verify it before parsing.
-- Commands must not import adapters.
-- Acknowledge first, then run commands inside `ctx.waitUntil()`.
-- Never log platform API URLs. Zalo and Telegram URLs contain the bot token.
-- Do not use KV for deduplication, counters, or locks.
-- If code and `docs/` disagree, fix one of them in the same change, and update the status table in `docs/README.md`.
+- Đọc request body một lần trong pipeline. Verify trước khi parse.
+- Command không được import adapter.
+- Acknowledge trước, rồi chạy lệnh trong `ctx.waitUntil()`.
+- Không bao giờ log URL API của nền tảng. URL của Zalo và Telegram chứa bot token.
+- Không dùng KV cho deduplication, counter hoặc lock.
+- Nếu code và `docs/` khác nhau, hãy sửa một trong hai trong cùng thay đổi, và cập nhật bảng trạng thái trong `docs/README.md`.
 
-## Commands
+## Lệnh
 
 ```bash
 npm run dev

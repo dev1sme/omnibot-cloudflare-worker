@@ -1,16 +1,16 @@
-# Security
+# Bảo mật
 
-The webhook endpoints are public. Treat every request as hostile until `verify` succeeds.
+Các endpoint webhook là public. Hãy coi mọi request là thù địch cho đến khi `verify` thành công.
 
-## Verification
+## Xác minh
 
-- Every adapter MUST verify every request before parsing its body.
-- A failed check MUST return 401 with an empty body and reveal no reason. Zalo's sample code uses 403, but its documentation requires no specific status.
-- `verify` MUST fail closed. A missing header or malformed value returns `false`.
+- Mọi adapter PHẢI xác minh mọi request trước khi parse body.
+- Kiểm tra thất bại PHẢI trả 401 với body rỗng và không nêu lý do. Code mẫu của Zalo dùng 403, nhưng tài liệu của Zalo không yêu cầu status cụ thể.
+- `verify` PHẢI fail closed. Header thiếu hoặc giá trị sai định dạng thì trả `false`.
 
 ### Shared secret (Zalo, Telegram)
 
-Compare in constant time. Hash both values first so that values of different lengths can be compared.
+So sánh constant-time. Hash cả hai giá trị trước để so sánh được các giá trị khác độ dài.
 
 ```ts
 const encoder = new TextEncoder();
@@ -23,11 +23,11 @@ export async function secretEquals(a: string, b: string): Promise<boolean> {
 }
 ```
 
-MUST NOT compare secrets with `===`.
+KHÔNG ĐƯỢC so sánh secret bằng `===`.
 
-### Ed25519 signature (Discord)
+### Chữ ký Ed25519 (Discord)
 
-Verify `X-Signature-Ed25519` against the bytes of `X-Signature-Timestamp` followed by the raw body. The signature and public key are hex-encoded.
+Xác minh `X-Signature-Ed25519` trên các byte của `X-Signature-Timestamp` nối với raw body. Chữ ký và public key được mã hoá hex.
 
 ```ts
 const key = await crypto.subtle.importKey(
@@ -45,59 +45,59 @@ return crypto.subtle.verify(
 );
 ```
 
-- The signed bytes MUST come from the original body. Parsing and re-serializing JSON breaks the signature.
-- Catch errors from malformed input and return `false`.
+- Các byte được ký PHẢI lấy từ body gốc. Parse rồi serialize lại JSON sẽ làm hỏng chữ ký.
+- Bắt lỗi do đầu vào sai định dạng và trả `false`.
 
-## Secrets
+## Secret
 
-`WEBHOOK_SECRET` MUST be 8 to 256 characters and use only `A-Z`, `a-z`, `0-9`, `_`, and `-`.
+`WEBHOOK_SECRET` PHẢI dài từ 8 đến 256 ký tự và chỉ dùng `A-Z`, `a-z`, `0-9`, `_`, `-`.
 
-This format satisfies both platforms. Zalo requires 8 to 256 characters, and Telegram allows only these characters.
+Định dạng này thoả cả hai nền tảng. Zalo yêu cầu 8 đến 256 ký tự, còn Telegram chỉ cho phép các ký tự này.
 
-Generate one with:
+Tạo giá trị bằng:
 
 ```bash
 openssl rand -hex 32
 ```
 
-| Secret | Worker | Scripts |
+| Secret | Worker | Script |
 | --- | --- | --- |
-| `WEBHOOK_SECRET` | Yes | `set-webhooks` |
-| `ZALO_BOT_TOKEN` | Yes | `set-webhooks` |
-| `TELEGRAM_BOT_TOKEN` | Yes | `set-webhooks` |
-| `DISCORD_APP_ID` | Yes | `register-discord` |
-| `DISCORD_PUBLIC_KEY` | Yes | No |
-| `DISCORD_BOT_TOKEN` | **No** | `register-discord` |
+| `WEBHOOK_SECRET` | Có | `set-webhooks` |
+| `ZALO_BOT_TOKEN` | Có | `set-webhooks` |
+| `TELEGRAM_BOT_TOKEN` | Có | `set-webhooks` |
+| `DISCORD_APP_ID` | Có | `register-discord` |
+| `DISCORD_PUBLIC_KEY` | Có | Không |
+| `DISCORD_BOT_TOKEN` | **Không** | `register-discord` |
 
-- Deployed secrets MUST be set with `npx wrangler secret put`.
-- Secrets MUST NOT appear in `[vars]` in `wrangler.toml`, in source code, or in a commit.
-- `.dev.vars*` and `.env*` MUST be listed in `.gitignore`.
-- The Worker MUST NOT hold a secret it does not use.
+- Secret đã deploy PHẢI được đặt bằng `npx wrangler secret put`.
+- Secret KHÔNG ĐƯỢC xuất hiện trong `[vars]` của `wrangler.toml`, trong source code, hoặc trong commit.
+- `.dev.vars*` và `.env*` PHẢI có trong `.gitignore`.
+- Worker KHÔNG ĐƯỢC giữ secret mà nó không dùng.
 
 ### Rotation
 
-1. Set the new value with `npx wrangler secret put`.
-2. For `WEBHOOK_SECRET`, run `npm run set-webhooks` immediately. Webhooks fail with 401 until this step finishes.
-3. Revoke the old value on the platform, if it is a platform token.
+1. Đặt giá trị mới bằng `npx wrangler secret put`.
+2. Với `WEBHOOK_SECRET`, chạy `npm run set-webhooks` ngay. Webhook sẽ lỗi 401 cho đến khi bước này xong.
+3. Thu hồi giá trị cũ trên nền tảng, nếu đó là token của nền tảng.
 
 ## Logging
 
-**Zalo and Telegram put the bot token in the API URL.** A logged URL or request object therefore exposes the token.
+**Zalo và Telegram đặt bot token trong URL API.** Vì vậy log URL hoặc object request sẽ làm lộ token.
 
-Logs MUST NOT contain:
+Log KHÔNG ĐƯỢC chứa:
 
-- Tokens, secrets, or signatures
-- Request URLs for platform APIs
-- Request headers
-- Discord interaction tokens
-- Message text or `msg.raw`
+- Token, secret, hoặc chữ ký
+- URL request tới API của nền tảng
+- Request header
+- Interaction token của Discord
+- Nội dung tin nhắn hoặc `msg.raw`
 
-Logs MAY contain the platform name, the command name, a chat ID, a response status, and a sanitized error message. A log entry SHOULD include IDs only when they are needed for debugging.
+Log CÓ THỂ chứa tên nền tảng, tên lệnh, chat ID, response status, và thông báo lỗi đã được làm sạch. Log entry NÊN chỉ chứa ID khi cần cho việc debug.
 
-Treat errors from `fetch` as sensitive. Log the status and platform error code, not the whole error object.
+Coi lỗi từ `fetch` là nhạy cảm. Hãy log status và mã lỗi của nền tảng, không log nguyên object lỗi.
 
 ## Output
 
-- User-visible errors MUST be generic.
-- `reply` MUST send plain text, so that user input cannot inject platform markup.
-- Discord output that can repeat user input MUST NOT trigger mentions. Set `allowed_mentions: { parse: [] }` on replies.
+- Thông báo lỗi người dùng thấy PHẢI chung chung.
+- `reply` PHẢI gửi plain text, để nội dung người dùng nhập không chèn được markup của nền tảng.
+- Output Discord có thể lặp lại nội dung người dùng nhập KHÔNG ĐƯỢC kích hoạt mention. Đặt `allowed_mentions: { parse: [] }` trong reply.

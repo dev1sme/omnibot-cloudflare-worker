@@ -1,87 +1,87 @@
-# Commands
+# Lệnh
 
-A command is platform-independent logic that takes a message and returns reply text.
+Lệnh là logic không phụ thuộc nền tảng: nhận một tin nhắn và trả về nội dung trả lời.
 
-## Writing a command
+## Viết lệnh
 
-Create `src/commands/hello.ts`:
+Tạo `src/commands/hello.ts`:
 
 ```ts
 import type { Command } from "../types";
 
 export const hello: Command = {
   name: "hello",
-  description: "Greet the user",
+  description: "Chào người dùng",
   async run(msg) {
-    return `Hello ${msg.user.name ?? "there"} from ${msg.platform}!`;
+    return `Xin chào ${msg.user.name ?? "bạn"} từ ${msg.platform}!`;
   },
 };
 ```
 
-Register it in `src/commands/index.ts`:
+Đăng ký trong `src/commands/index.ts`:
 
 ```ts
 import { hello } from "./hello";
 export const commands = [ping, help, hello];
 ```
 
-For Discord, run `npm run register-discord` so that the slash command appears.
+Với Discord, chạy `npm run register-discord` để slash command xuất hiện.
 
-## Naming rules
+## Quy tắc đặt tên
 
-These rules are the portable subset of Discord's limits.
+Các quy tắc này là phần con dùng được trên mọi nền tảng, lấy từ giới hạn của Discord.
 
-- `name` MUST match `^[a-z0-9_-]{1,32}$`.
-- `name` MUST be unique.
-- `description` MUST be 1 to 100 characters.
+- `name` PHẢI khớp `^[a-z0-9_-]{1,32}$`.
+- `name` PHẢI là duy nhất.
+- `description` PHẢI dài từ 1 đến 100 ký tự.
 
-A test MUST check every registered command against these rules.
+PHẢI có test kiểm tra mọi lệnh đã đăng ký theo các quy tắc này.
 
-## Routing rules
+## Quy tắc routing
 
-`resolve(text, commands)` in `src/router.ts` works as follows.
+`resolve(text, commands)` trong `src/router.ts` hoạt động như sau.
 
-| Input | Route |
+| Đầu vào | Route |
 | --- | --- |
-| `hello` | `none`: no reply |
-| `/hello` or `/hello world` | `command` |
-| `/HELLO` | `command`: names match case-insensitively |
-| `/missing` | `unknown`: replies with a pointer to `/help` |
+| `hello` | `none`: không trả lời |
+| `/hello` hoặc `/hello world` | `command` |
+| `/HELLO` | `command`: tên lệnh không phân biệt hoa thường |
+| `/missing` | `unknown`: trả lời kèm gợi ý dùng `/help` |
 
-The router MUST NOT trim platform-specific syntax. Adapters normalize that text during parsing, such as Telegram's `/ping@this_bot`.
+Router KHÔNG ĐƯỢC xử lý cú pháp riêng của nền tảng. Adapter chuẩn hoá phần đó khi parse, ví dụ `/ping@this_bot` của Telegram.
 
-Replying to `unknown` is deliberate. A stale Discord command would otherwise stay in its loading state. The cost is a possible extra reply in Telegram groups that use several bots.
+Việc trả lời `unknown` là có chủ đích. Nếu không, lệnh Discord cũ sẽ kẹt ở trạng thái loading. Cái giá là có thể thừa một tin trả lời trong group Telegram có nhiều bot.
 
-## Arguments
+## Tham số
 
-A command reads arguments by parsing `msg.text`. Text after the command name is available on Telegram and Zalo. Discord commands take no options yet, so a command MUST work or reply with usage text when arguments are absent.
+Lệnh đọc tham số bằng cách parse `msg.text`. Phần text sau tên lệnh có trên Telegram và Zalo. Lệnh Discord chưa có option, nên lệnh PHẢI vẫn chạy được hoặc trả về hướng dẫn sử dụng khi không có tham số.
 
-## Runtime rules
+## Quy tắc runtime
 
-- `run` executes inside `ctx.waitUntil()`, after the platform has been acknowledged.
-- All `waitUntil` work in a request shares a 30-second limit, and pending promises are canceled after it. An external call MUST set a timeout that leaves room for the reply:
+- `run` chạy trong `ctx.waitUntil()`, sau khi đã acknowledge với nền tảng.
+- Mọi việc trong `waitUntil` của một request dùng chung giới hạn 30 giây, promise còn chờ sau đó sẽ bị huỷ. Lời gọi ra ngoài PHẢI đặt timeout, chừa đủ thời gian để gửi reply:
 
   ```ts
   const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
   ```
 
-- A failed command SHOULD throw. The pipeline logs the error and sends a generic reply.
-- `run` MUST NOT return text containing a secret, or error details from an internal system.
-- Return text without platform-specific formatting.
-- Commands with side effects MUST tolerate duplicate delivery. See [contracts.md](contracts.md).
+- Lệnh thất bại NÊN throw. Pipeline sẽ ghi log lỗi và gửi một câu trả lời chung chung.
+- `run` KHÔNG ĐƯỢC trả về text chứa secret hoặc chi tiết lỗi của hệ thống nội bộ.
+- Trả về text không dùng định dạng riêng của nền tảng.
+- Lệnh có side effect PHẢI chịu được việc nhận trùng. Xem [contracts.md](contracts.md).
 
-## State
+## Trạng thái
 
-Use `deps.env.OMNIBOT_KV` for data that is read often and written rarely.
+Dùng `deps.env.OMNIBOT_KV` cho dữ liệu đọc nhiều, ghi ít.
 
 ```ts
 async run(msg, { env }) {
   const key = `user:${msg.platform}:${msg.user.id}:lang`;
   const lang = await env.OMNIBOT_KV.get(key);
-  return lang ? `Language: ${lang}` : "No language set";
+  return lang ? `Ngôn ngữ: ${lang}` : "Chưa đặt ngôn ngữ";
 }
 ```
 
-- Keys MUST include `msg.platform`, because IDs are unique only within one platform.
-- Keys follow `<entity>:<platform>:<id>[:<field>]`.
-- MUST NOT use KV for counters, locks, or read-after-write logic. It is eventually consistent and allows one write per second per key.
+- Key PHẢI có `msg.platform`, vì ID chỉ là duy nhất trong một nền tảng.
+- Key theo dạng `<entity>:<platform>:<id>[:<field>]`.
+- KHÔNG ĐƯỢC dùng KV cho counter, lock, hoặc logic cần đọc ngay sau khi ghi. KV là eventually consistent và chỉ cho một lượt ghi mỗi giây trên một key.

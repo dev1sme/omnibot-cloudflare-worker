@@ -1,30 +1,30 @@
-# Architecture
+# Kiến trúc
 
-omnibot is one Cloudflare Worker that serves several chat platforms. Command logic is written once. Platform differences stay inside adapters.
+omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic lệnh chỉ viết một lần. Khác biệt giữa các nền tảng nằm gọn trong adapter.
 
-## Layers
+## Các layer
 
-| Layer | Location | Responsibility |
+| Layer | Vị trí | Trách nhiệm |
 | --- | --- | --- |
-| Entry point | `src/index.ts` | Match routes, run the pipeline, map outcomes to HTTP |
-| Adapters | `src/adapters/` | Verify, parse, acknowledge, and reply for one platform |
-| Router | `src/router.ts` | Resolve message text to a command |
-| Commands | `src/commands/` | Platform-independent logic |
-| Library | `src/lib/` | Shared helpers such as `splitMessage` and `secretEquals` |
-| Scripts | `scripts/` | One-off setup tasks that run on a developer machine |
+| Entry point | `src/index.ts` | Khớp route, chạy pipeline, chuyển kết quả thành HTTP |
+| Adapter | `src/adapters/` | Xác minh, parse, acknowledge và reply cho một nền tảng |
+| Router | `src/router.ts` | Ánh xạ nội dung tin nhắn sang lệnh |
+| Command | `src/commands/` | Logic không phụ thuộc nền tảng |
+| Library | `src/lib/` | Helper dùng chung như `splitMessage` và `secretEquals` |
+| Script | `scripts/` | Tác vụ cài đặt chạy một lần trên máy developer |
 
-## Dependency rules
+## Quy tắc phụ thuộc
 
-- Commands MUST NOT import from `src/adapters/`.
-- Commands SHOULD NOT read `msg.raw` or branch on `msg.platform` for behavior. Displaying the platform name is fine.
-- Adapters MUST NOT import from `src/commands/` or `src/router.ts`.
-- The router MUST NOT import from `src/adapters/`.
-- `src/lib/` MUST NOT import from any other layer.
-- Worker code MUST NOT import from `scripts/`.
+- Command KHÔNG ĐƯỢC import từ `src/adapters/`.
+- Command KHÔNG NÊN đọc `msg.raw` hoặc rẽ nhánh hành vi theo `msg.platform`. Hiển thị tên nền tảng thì được.
+- Adapter KHÔNG ĐƯỢC import từ `src/commands/` hoặc `src/router.ts`.
+- Router KHÔNG ĐƯỢC import từ `src/adapters/`.
+- `src/lib/` KHÔNG ĐƯỢC import từ layer nào khác.
+- Code của Worker KHÔNG ĐƯỢC import từ `scripts/`.
 
-`src/index.ts` is the only module that connects adapters, the router, and commands.
+`src/index.ts` là module duy nhất kết nối adapter, router và command.
 
-## Directory layout
+## Cấu trúc thư mục
 
 ```
 src/
@@ -48,7 +48,7 @@ scripts/
 └── register-discord.ts
 ```
 
-## Request lifecycle
+## Vòng đời request
 
 ```ts
 async function handleWebhook(
@@ -78,25 +78,25 @@ async function handleWebhook(
 }
 ```
 
-The steps MUST stay in this order:
+Các bước PHẢI giữ đúng thứ tự này:
 
-1. Check that the adapter is enabled.
-2. Read the raw body once.
-3. Verify the request. Nothing may parse the body before this step succeeds.
-4. Parse the body into a `ParseResult`.
-5. Resolve the command.
-6. Schedule the work with `ctx.waitUntil()`.
-7. Return the acknowledgement.
+1. Kiểm tra adapter đang bật.
+2. Đọc raw body một lần.
+3. Xác minh request. Không có gì được parse body trước khi bước này thành công.
+4. Parse body thành `ParseResult`.
+5. Xác định lệnh.
+6. Lên lịch xử lý bằng `ctx.waitUntil()`.
+7. Trả về acknowledgement.
 
-## Why every command runs in the background
+## Vì sao mọi lệnh đều chạy nền
 
-Discord invalidates the interaction token if the first response takes more than 3 seconds. A command cannot promise to finish in that time, because it may call an external API.
+Discord huỷ interaction token nếu phản hồi đầu tiên mất hơn 3 giây. Lệnh không thể cam kết xong trong thời gian đó, vì có thể phải gọi API ngoài.
 
-All platforms therefore follow one path: acknowledge first, then run the command and send the reply in `ctx.waitUntil()`. The rule has one cost. Discord users briefly see a loading state, even for `/ping`.
+Vì vậy mọi nền tảng đi chung một luồng: acknowledge trước, sau đó chạy lệnh và gửi reply trong `ctx.waitUntil()`. Cái giá của quy tắc này là người dùng Discord sẽ thấy trạng thái loading trong chốc lát, kể cả với `/ping`.
 
-## Execution
+## Thực thi
 
-`execute` runs after the response has been returned, so nothing can catch its errors. It MUST NOT reject.
+`execute` chạy sau khi response đã được trả về, nên không còn gì bắt được lỗi của nó. Hàm này KHÔNG ĐƯỢC reject.
 
 ```ts
 async function execute(route, msg, adapter, env, ctx) {
@@ -118,10 +118,10 @@ async function execute(route, msg, adapter, env, ctx) {
 }
 ```
 
-`logError` MUST follow the logging rules in [security.md](security.md).
+`logError` PHẢI tuân theo quy tắc logging trong [security.md](security.md).
 
-## Out of scope
+## Ngoài phạm vi
 
-- Long-polling and `getUpdates`. A Worker does not run continuously, and Zalo treats polling and webhooks as mutually exclusive.
-- The Discord Gateway. Reading all channel messages needs a persistent WebSocket connection, which needs a separate server or Durable Objects.
-- Personal Zalo accounts. omnibot uses only the official Zalo Bot Platform.
+- Long-polling và `getUpdates`. Worker không chạy liên tục, và Zalo coi polling với webhook là loại trừ lẫn nhau.
+- Discord Gateway. Muốn đọc mọi tin nhắn trong kênh thì cần kết nối WebSocket liên tục, tức là cần server riêng hoặc Durable Objects.
+- Tài khoản Zalo cá nhân. omnibot chỉ dùng Zalo Bot Platform chính thức.

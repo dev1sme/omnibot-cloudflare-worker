@@ -1,8 +1,8 @@
-# Contracts
+# Contract
 
-`src/types.ts` MUST implement these types. A change here is a change to every adapter and command, so update this document in the same pull request.
+`src/types.ts` PHẢI implement các type này. Thay đổi ở đây ảnh hưởng đến mọi adapter và command, nên hãy cập nhật tài liệu này trong cùng pull request.
 
-## Types
+## Type
 
 ```ts
 export interface Env {
@@ -54,36 +54,36 @@ export type Route =
   | { kind: "none" }; // Not a command
 ```
 
-## Adapter method rules
+## Quy tắc cho từng method của adapter
 
-| Method | Rules |
+| Method | Quy tắc |
 | --- | --- |
-| `name` | MUST be lowercase and equal the `/webhook/<name>` path segment and `msg.platform` |
-| `isEnabled` | MUST return `false` if any secret the adapter needs is absent |
-| `verify` | MUST return `false` on failure, including missing or malformed headers. MUST NOT throw |
-| `parse` | MUST return `ignore` for malformed or unsupported payloads. MUST NOT throw |
-| `ack` | MUST return without network calls |
-| `reply` | MUST split long text, and MUST throw if the platform rejects the message |
+| `name` | PHẢI viết thường, và trùng với đoạn path `/webhook/<name>` cũng như `msg.platform` |
+| `isEnabled` | PHẢI trả `false` nếu thiếu bất kỳ secret nào adapter cần |
+| `verify` | PHẢI trả `false` khi thất bại, kể cả khi header thiếu hoặc sai định dạng. KHÔNG ĐƯỢC throw |
+| `parse` | PHẢI trả `ignore` với payload sai định dạng hoặc không hỗ trợ. KHÔNG ĐƯỢC throw |
+| `ack` | PHẢI trả về mà không gọi network |
+| `reply` | PHẢI chia nhỏ tin dài, và PHẢI throw nếu nền tảng từ chối tin nhắn |
 
-## HTTP behavior
+## Hành vi HTTP
 
-| Condition | Status | Body |
+| Điều kiện | Status | Body |
 | --- | --- | --- |
-| Path is not `/webhook/<known adapter>` | 404 | Empty |
-| Method is not `POST` on a webhook path | 405 | Empty |
-| Adapter is disabled | 404 | Empty |
-| Verification fails | 401 | Empty |
-| `parse` returns `ignore` | 200 | `{"ok":true}` |
-| `parse` returns `respond` | Set by adapter | Set by adapter |
-| Text is not a command | 200 | `{"ok":true}` |
-| Command or unknown command accepted | From `ack` | From `ack` |
-| Unexpected error before acknowledgement | 500 | Empty |
+| Path không phải `/webhook/<adapter đã biết>` | 404 | Rỗng |
+| Method khác `POST` trên path webhook | 405 | Rỗng |
+| Adapter đang tắt | 404 | Rỗng |
+| Xác minh thất bại | 401 | Rỗng |
+| `parse` trả `ignore` | 200 | `{"ok":true}` |
+| `parse` trả `respond` | Do adapter đặt | Do adapter đặt |
+| Nội dung không phải lệnh | 200 | `{"ok":true}` |
+| Lệnh hợp lệ hoặc lệnh không tồn tại đã được nhận | Từ `ack` | Từ `ack` |
+| Lỗi không lường trước khi chưa acknowledge | 500 | Rỗng |
 
-A failed command MUST NOT change the HTTP result, because the acknowledgement has already been sent.
+Lệnh chạy lỗi KHÔNG ĐƯỢC làm thay đổi kết quả HTTP, vì acknowledgement đã được gửi đi.
 
-## Delivery semantics
+## Cơ chế delivery
 
-- Delivery is at-most-once after acknowledgement. Work that fails inside `waitUntil` is logged and is not retried.
-- Duplicate deliveries remain possible. Telegram repeats a webhook after a non-2xx response, and Zalo documents no retry policy.
-- omnibot has no global deduplication. KV is not suitable for it: changes can take 60 seconds or more to reach other locations, and the free tier allows 1,000 writes per day.
-- A command with side effects MUST tolerate running twice. If it cannot, it needs a strongly consistent store such as Durable Objects or D1.
+- Sau khi acknowledge, delivery là at-most-once. Việc thất bại trong `waitUntil` được ghi log và không retry.
+- Vẫn có thể nhận trùng. Telegram gửi lại webhook sau response không phải 2xx, còn Zalo không ghi rõ chính sách retry.
+- omnibot không có cơ chế deduplication toàn cục. KV không phù hợp cho việc này: thay đổi có thể mất từ 60 giây trở lên mới đến các location khác, và free tier chỉ cho 1.000 lượt ghi mỗi ngày.
+- Lệnh có side effect PHẢI chịu được việc chạy hai lần. Nếu không thể, lệnh cần một store strongly consistent như Durable Objects hoặc D1.

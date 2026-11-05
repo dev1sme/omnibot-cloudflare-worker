@@ -1,96 +1,98 @@
-# Conventions
+# Quy ước
 
-## Language
+## Ngôn ngữ
 
-Code, comments, identifiers, commit messages, and these documents MUST be in English. Bot replies and the root `README.md` MAY use Vietnamese.
+Tài liệu trong `docs/`, `CLAUDE.md` và `README.md` viết bằng tiếng Việt, thuật ngữ kỹ thuật giữ tiếng Anh.
+
+Code, comment, identifier và commit message PHẢI viết bằng tiếng Anh. Câu trả lời của bot CÓ THỂ dùng tiếng Việt.
 
 ## TypeScript
 
-- Enable `strict` in `tsconfig.json`.
-- MUST NOT use `any`. Use `unknown` for external data, and narrow it inside the adapter.
-- Use `import type` for type-only imports.
-- Use named exports. The only default export is the Worker handler in `src/index.ts`, which the runtime requires.
-- Use Web APIs (`fetch`, `crypto.subtle`, `Response`). Do not add Node.js-only APIs to Worker code.
-- Keep runtime dependencies to a minimum. Each one adds to the bundle and to the supply chain, so a pull request that adds one MUST state why.
+- Bật `strict` trong `tsconfig.json`.
+- KHÔNG ĐƯỢC dùng `any`. Dùng `unknown` cho dữ liệu từ bên ngoài, rồi thu hẹp type trong adapter.
+- Dùng `import type` cho import chỉ có type.
+- Dùng named export. Default export duy nhất là Worker handler trong `src/index.ts`, do runtime yêu cầu.
+- Dùng Web API (`fetch`, `crypto.subtle`, `Response`). Không thêm API chỉ có trên Node.js vào code của Worker.
+- Giữ runtime dependency ở mức tối thiểu. Mỗi dependency làm tăng bundle và rủi ro supply chain, nên pull request thêm dependency PHẢI nêu lý do.
 
-## Naming
+## Đặt tên
 
-| Item | Style | Example |
+| Đối tượng | Kiểu | Ví dụ |
 | --- | --- | --- |
-| Files | `kebab-case.ts` | `split-message.ts` |
-| Functions, variables | `camelCase` | `splitMessage` |
-| Types, interfaces | `PascalCase` | `IncomingMessage` |
-| Module constants | `UPPER_SNAKE_CASE` | `MAX_TEXT_LENGTH` |
-| Environment values | `UPPER_SNAKE_CASE` | `TELEGRAM_BOT_TOKEN` |
-| Command objects | Command name | `export const hello` |
-| Adapter objects | Platform name | `export const telegram` |
+| File | `kebab-case.ts` | `split-message.ts` |
+| Function, biến | `camelCase` | `splitMessage` |
+| Type, interface | `PascalCase` | `IncomingMessage` |
+| Hằng số cấp module | `UPPER_SNAKE_CASE` | `MAX_TEXT_LENGTH` |
+| Biến môi trường | `UPPER_SNAKE_CASE` | `TELEGRAM_BOT_TOKEN` |
+| Object lệnh | Tên lệnh | `export const hello` |
+| Object adapter | Tên nền tảng | `export const telegram` |
 
-## Constants
+## Hằng số
 
-Platform limits and API base URLs MUST be named constants in the adapter that uses them.
+Giới hạn của nền tảng và API base URL PHẢI là hằng số có tên, đặt trong adapter sử dụng chúng.
 
 ```ts
 const MAX_TEXT_LENGTH = 4096;
 ```
 
-## Errors
+## Lỗi
 
-- `verify` and `parse` return a value on failure. They do not throw.
-- `reply` and commands throw on failure. The pipeline catches and logs the error.
-- Do not swallow an error without logging it. Logging follows [security.md](security.md).
+- `verify` và `parse` trả về giá trị khi thất bại, không throw.
+- `reply` và lệnh throw khi thất bại. Pipeline bắt và ghi log lỗi.
+- Không nuốt lỗi mà không ghi log. Logging tuân theo [security.md](security.md).
 
-## Testing
+## Test
 
-The stack is Vitest with `@cloudflare/vitest-pool-workers`, so tests run in the Workers runtime.
+Stack là Vitest với `@cloudflare/vitest-pool-workers`, để test chạy trong Workers runtime.
 
-Tests MUST NOT call real platform APIs. Stub `fetch`.
+Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 
-| Component | Required tests |
+| Thành phần | Test bắt buộc |
 | --- | --- |
-| Pipeline | Each row in the HTTP table in [contracts.md](contracts.md), and verification running before parsing |
-| `verify` | Valid, wrong value, missing header, malformed value |
-| `parse` | Each row in the adapter's parse table, plus malformed JSON |
-| `reply` | Request shape, long text splitting, platform rejection throwing |
-| Router | Each row in the routing table in [commands.md](commands.md) |
-| `splitMessage` | Exact limit, limit plus one, no surrogate pair split, no empty chunk |
-| Command list | Name and description rules, and unique names |
-| Each command | Its reply, and each of its failure paths |
+| Pipeline | Từng dòng trong bảng HTTP ở [contracts.md](contracts.md), và verify chạy trước parse |
+| `verify` | Đúng, sai giá trị, thiếu header, sai định dạng |
+| `parse` | Từng dòng trong bảng parse của adapter, cộng JSON sai định dạng |
+| `reply` | Cấu trúc request, chia tin dài, throw khi nền tảng từ chối |
+| Router | Từng dòng trong bảng routing ở [commands.md](commands.md) |
+| `splitMessage` | Đúng giới hạn, vượt giới hạn một đơn vị, không tách surrogate pair, không có chunk rỗng |
+| Danh sách lệnh | Quy tắc tên và mô tả, tên không trùng |
+| Từng lệnh | Câu trả lời, và từng nhánh thất bại |
 
-Discord signature tests MUST use a real Ed25519 key pair generated in the test.
+Test chữ ký Discord PHẢI dùng cặp khoá Ed25519 thật được tạo trong test.
 
-## Commits
+## Commit
 
-Follow Conventional Commits:
+Theo Conventional Commits:
 
 ```
 <type>(<scope>): <subject>
 ```
 
-- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
-- Scopes: `router`, `pipeline`, `zalo`, `telegram`, `discord`, `commands`, `scripts`, or a command name.
-- The subject is imperative and lowercase, has no trailing period, and the header is at most 72 characters.
-- Make one logical change per commit.
+- Type: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+- Scope: `router`, `pipeline`, `zalo`, `telegram`, `discord`, `commands`, `scripts`, hoặc tên lệnh.
+- Subject ở dạng mệnh lệnh, viết thường, không có dấu chấm cuối. Header tối đa 72 ký tự.
+- Mỗi commit là một thay đổi logic.
 
 ```
 feat(telegram): strip bot mention from commands
 fix(discord): retry first reply edit on 404
 ```
 
-## Branches and pull requests
+## Branch và pull request
 
-- MUST NOT commit directly to `main`. Use a pull request.
-- Branch names follow `<type>/<short-description>`, such as `feat/telegram-adapter`.
-- Run `npm run lint && npm test` before opening a pull request.
+- KHÔNG ĐƯỢC commit thẳng vào `main`. Hãy dùng pull request.
+- Tên branch theo dạng `<type>/<mô-tả-ngắn>`, ví dụ `feat/telegram-adapter`.
+- Chạy `npm run lint && npm test` trước khi mở pull request.
 
 ## Definition of Done
 
-A change is done when all of these are true:
+Một thay đổi hoàn thành khi thoả tất cả điều kiện sau:
 
-- [ ] `npm run lint` and `npm test` pass.
-- [ ] Tests cover the new behavior and its failure paths.
-- [ ] The dependency rules in [architecture.md](architecture.md) still hold.
-- [ ] No secret, token, or message text appears in logs.
-- [ ] Documents match the code, including the status table in [README.md](README.md).
-- [ ] New secrets are in `Env` and in [operations.md](operations.md).
-- [ ] New or changed commands have been registered with `npm run register-discord`, if deployed.
-- [ ] The change has been tested through a tunnel or deployment on each affected platform. Note in the pull request if this was not possible.
+- [ ] `npm run lint` và `npm test` đều pass.
+- [ ] Test bao phủ hành vi mới và các nhánh thất bại của nó.
+- [ ] Các quy tắc phụ thuộc trong [architecture.md](architecture.md) vẫn đúng.
+- [ ] Log không chứa secret, token, hay nội dung tin nhắn.
+- [ ] Tài liệu khớp với code, kể cả bảng trạng thái trong [README.md](README.md).
+- [ ] Secret mới đã có trong `Env` và [operations.md](operations.md).
+- [ ] Lệnh mới hoặc đã đổi đã được đăng ký bằng `npm run register-discord`, nếu đã deploy.
+- [ ] Thay đổi đã được test qua tunnel hoặc bản deploy trên từng nền tảng bị ảnh hưởng. Nếu không làm được, hãy ghi chú trong pull request.

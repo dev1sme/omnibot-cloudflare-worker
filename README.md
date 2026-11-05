@@ -55,7 +55,7 @@ Phần logic (commands) không cần biết tin nhắn đến từ đâu. Chi ti
 
 ## 📁 Cấu trúc thư mục
 
-Xem [docs/architecture.md](docs/architecture.md#directory-layout).
+Xem [docs/architecture.md](docs/architecture.md#cấu-trúc-thư-mục).
 
 ---
 
@@ -107,7 +107,7 @@ npx wrangler secret put DISCORD_PUBLIC_KEY
 
 `DISCORD_BOT_TOKEN` chỉ dùng cho script `register-discord`, nên **không** đưa lên Worker.
 
-Các script chạy trên máy local không đọc được secret đã deploy, nên cần thêm file `.dev.vars` (không commit). Xem [docs/operations.md](docs/operations.md#local-secrets).
+Các script chạy trên máy local không đọc được secret đã deploy, nên cần thêm file `.dev.vars` (không commit). Xem [docs/operations.md](docs/operations.md#secret-cục-bộ).
 
 Tạo KV namespace để lưu trạng thái:
 
@@ -186,7 +186,7 @@ Lệnh này tự chạy trên cả Zalo, Telegram và Discord. Riêng với Disc
 
 Viết một adapter trong `src/adapters/` và thêm nó vào danh sách trong `src/adapters/index.ts`. Route `/webhook/<name>` sẽ tự hoạt động.
 
-Interface xem [docs/contracts.md](docs/contracts.md), các bước xem [docs/adapters.md](docs/adapters.md#adding-a-platform).
+Interface xem [docs/contracts.md](docs/contracts.md), các bước xem [docs/adapters.md](docs/adapters.md#thêm-nền-tảng).
 
 ---
 

@@ -1,130 +1,130 @@
-# Adapters
+# Adapter
 
-An adapter contains everything specific to one platform. It implements the `Adapter` contract in [contracts.md](contracts.md).
+Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement contract `Adapter` trong [contracts.md](contracts.md).
 
-## Summary
+## Tổng quan
 
 | | Zalo | Telegram | Discord |
 | --- | --- | --- | --- |
-| Inbound | Webhook | Webhook | Interactions over HTTP |
-| Verification | `X-Bot-Api-Secret-Token` | `X-Telegram-Bot-Api-Secret-Token` | Ed25519 signature |
-| Required for `isEnabled` | `ZALO_BOT_TOKEN`, `WEBHOOK_SECRET` | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `WEBHOOK_SECRET` | `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY` |
+| Inbound | Webhook | Webhook | Interactions qua HTTP |
+| Xác minh | `X-Bot-Api-Secret-Token` | `X-Telegram-Bot-Api-Secret-Token` | Chữ ký Ed25519 |
+| Cần cho `isEnabled` | `ZALO_BOT_TOKEN`, `WEBHOOK_SECRET` | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `WEBHOOK_SECRET` | `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY` |
 | Acknowledgement | `{"ok":true}` | `{"ok":true}` | `{"type":5}` |
-| Text limit | 2000 | 4096 | 2000 |
-| Group chats in omnibot | No | Yes | Yes (server) |
+| Giới hạn text | 2000 | 4096 | 2000 |
+| Group chat trong omnibot | Không | Có | Có (server) |
 
-## Shared rules
+## Quy tắc chung
 
-- `verify` MUST use the helpers and rules in [security.md](security.md).
-- `reply` MUST send plain text. It MUST NOT set `parse_mode` or other formatting modes, because command output can contain user input.
-- `reply` MUST use `splitMessage(text, limit)` from `src/lib/split-message.ts`.
-- `reply` MUST check the HTTP status and the platform's `ok` field where one exists, then throw on failure.
-- Adapters MUST NOT call `getUpdates` or any other polling API.
+- `verify` PHẢI dùng helper và quy tắc trong [security.md](security.md).
+- `reply` PHẢI gửi plain text. KHÔNG ĐƯỢC đặt `parse_mode` hay chế độ định dạng khác, vì kết quả lệnh có thể chứa nội dung người dùng nhập.
+- `reply` PHẢI dùng `splitMessage(text, limit)` trong `src/lib/split-message.ts`.
+- `reply` PHẢI kiểm tra HTTP status và trường `ok` của nền tảng nếu có, rồi throw khi thất bại.
+- Adapter KHÔNG ĐƯỢC gọi `getUpdates` hay bất kỳ API polling nào.
 
-### Splitting messages
+### Chia nhỏ tin nhắn
 
-`splitMessage` MUST:
+`splitMessage` PHẢI:
 
-- Measure length with `string.length` (UTF-16 code units). This is never lower than the character count, so it stays within the limit.
-- Prefer to break at a newline, then at a space.
-- Never split a surrogate pair.
-- Never return an empty chunk.
+- Đo độ dài bằng `string.length` (UTF-16 code unit). Giá trị này không bao giờ thấp hơn số ký tự, nên luôn nằm trong giới hạn.
+- Ưu tiên ngắt ở dấu xuống dòng, sau đó đến dấu cách.
+- Không bao giờ tách đôi surrogate pair.
+- Không bao giờ trả về chunk rỗng.
 
 ## Zalo
 
 API base: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/<method>`.
 
-**Verify.** Compare the `X-Bot-Api-Secret-Token` header with `WEBHOOK_SECRET`.
+**Verify.** So sánh header `X-Bot-Api-Secret-Token` với `WEBHOOK_SECRET`.
 
 **Parse.**
 
-| Payload | Result |
+| Payload | Kết quả |
 | --- | --- |
-| `event_name` is `message.text.received` and `chat.chat_type` is `PRIVATE` | `message` |
-| `chat.chat_type` is `GROUP` (Beta on Zalo) | `ignore` |
-| Any other `event_name`, including `message.unsupported.received` | `ignore` |
+| `event_name` là `message.text.received` và `chat.chat_type` là `PRIVATE` | `message` |
+| `chat.chat_type` là `GROUP` (Beta trên Zalo) | `ignore` |
+| Mọi `event_name` khác, kể cả `message.unsupported.received` | `ignore` |
 
-| `IncomingMessage` | Source |
+| `IncomingMessage` | Nguồn |
 | --- | --- |
 | `chatId` | `message.chat.id` |
 | `user.id` | `message.from.id` |
 | `user.name` | `message.from.display_name` |
 | `text` | `message.text` |
 
-**Reply.** `POST /sendMessage` with `chat_id` and `text`. Text length MUST be 1 to 2000.
+**Reply.** `POST /sendMessage` với `chat_id` và `text`. Độ dài text PHẢI từ 1 đến 2000.
 
 ## Telegram
 
 API base: `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/<method>`.
 
-**Verify.** Compare the `X-Telegram-Bot-Api-Secret-Token` header with `WEBHOOK_SECRET`.
+**Verify.** So sánh header `X-Telegram-Bot-Api-Secret-Token` với `WEBHOOK_SECRET`.
 
-**Parse.** Return `message` only for an update that has `message.text` and `message.from`. Return `ignore` for all other updates.
+**Parse.** Chỉ trả `message` với update có cả `message.text` và `message.from`. Mọi update khác trả `ignore`.
 
-| `IncomingMessage` | Source |
+| `IncomingMessage` | Nguồn |
 | --- | --- |
 | `chatId` | `String(message.chat.id)` |
 | `user.id` | `String(message.from.id)` |
 | `user.name` | `message.from.first_name` |
-| `text` | `message.text`, normalized as below |
+| `text` | `message.text`, chuẩn hoá như bên dưới |
 
-**Normalize bot mentions.** Compare the mention case-insensitively with `TELEGRAM_BOT_USERNAME`.
+**Chuẩn hoá mention bot.** So sánh mention với `TELEGRAM_BOT_USERNAME`, không phân biệt hoa thường.
 
-| Input | Result |
+| Đầu vào | Kết quả |
 | --- | --- |
-| `/ping` | `text` is `/ping` |
-| `/ping@this_bot arg` | `text` is `/ping arg` |
+| `/ping` | `text` là `/ping` |
+| `/ping@this_bot arg` | `text` là `/ping arg` |
 | `/ping@other_bot` | `ignore` |
 
-**Reply.** `POST /sendMessage` with `chat_id` and `text`. Do not reply through the webhook response: Telegram allows it, but the bot cannot learn whether the request succeeded.
+**Reply.** `POST /sendMessage` với `chat_id` và `text`. Không reply qua webhook response: Telegram cho phép cách này, nhưng bot không biết được request có thành công hay không.
 
 ## Discord
 
 API base: `https://discord.com/api/v10`.
 
-Worker code reaches Discord only through the interaction token. The Worker therefore MUST NOT hold `DISCORD_BOT_TOKEN`, which only `scripts/register-discord.ts` needs.
+Code của Worker chỉ gọi Discord bằng interaction token. Vì vậy Worker KHÔNG ĐƯỢC giữ `DISCORD_BOT_TOKEN`, token này chỉ `scripts/register-discord.ts` cần.
 
-**Verify.** See [security.md](security.md). A failed check MUST return 401. Discord sends invalid signatures on purpose and removes the endpoint URL if a request is accepted.
+**Verify.** Xem [security.md](security.md). Kiểm tra thất bại PHẢI trả 401. Discord cố ý gửi chữ ký sai, và sẽ gỡ endpoint URL nếu request đó được chấp nhận.
 
 **Parse.**
 
-| Interaction `type` | Result |
+| `type` của interaction | Kết quả |
 | --- | --- |
-| `1` PING | `respond` with `{"type":1}`, status 200, `Content-Type: application/json` |
-| `2` APPLICATION_COMMAND with `channel_id` | `message` |
-| Anything else | `ignore` |
+| `1` PING | `respond` với `{"type":1}`, status 200, `Content-Type: application/json` |
+| `2` APPLICATION_COMMAND có `channel_id` | `message` |
+| Các loại khác | `ignore` |
 
-| `IncomingMessage` | Source |
+| `IncomingMessage` | Nguồn |
 | --- | --- |
 | `chatId` | `channel_id` |
 | `user.id` | `(member?.user ?? user).id` |
-| `user.name` | `global_name` or `username` of the same user |
+| `user.name` | `global_name` hoặc `username` của cùng user đó |
 | `text` | `` `/${data.name}` `` |
 
-Guild interactions carry the user in `member.user`. Direct messages carry it in `user`.
+Interaction trong guild để user ở `member.user`. Tin nhắn trực tiếp để user ở `user`.
 
-**Acknowledge.** Return `{"type":5}` (`DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE`) with `Content-Type: application/json`. The response MUST arrive within 3 seconds of the event.
+**Acknowledge.** Trả `{"type":5}` (`DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE`) với `Content-Type: application/json`. Response PHẢI đến trong vòng 3 giây kể từ khi có event.
 
 **Reply.**
 
-1. Send the first chunk with `PATCH /webhooks/{app_id}/{token}/messages/@original`.
-2. Send other chunks with `POST /webhooks/{app_id}/{token}`.
+1. Gửi chunk đầu bằng `PATCH /webhooks/{app_id}/{token}/messages/@original`.
+2. Gửi các chunk còn lại bằng `POST /webhooks/{app_id}/{token}`.
 
-The token is valid for 15 minutes. The first `PATCH` MUST retry on 404, up to 3 attempts with a short delay, because `waitUntil` work can start before Discord has received the acknowledgement.
+Token có hiệu lực 15 phút. Lần `PATCH` đầu PHẢI retry khi gặp 404, tối đa 3 lần với độ trễ ngắn, vì việc trong `waitUntil` có thể bắt đầu trước khi Discord nhận được acknowledgement.
 
-**Limitations.**
+**Giới hạn.**
 
-- The Worker receives slash commands only. It cannot read channel messages.
-- Commands take no options in the current version, so `text` never carries arguments.
+- Worker chỉ nhận slash command. Không đọc được tin nhắn trong kênh.
+- Phiên bản hiện tại chưa có option cho lệnh, nên `text` không bao giờ chứa tham số.
 
-## Adding a platform
+## Thêm nền tảng
 
-1. Confirm that the platform can deliver events through HTTP webhooks. Polling or a persistent connection does not fit a Worker.
-2. Create `src/adapters/<name>.ts` that implements `Adapter`.
-3. Add it to the list in `src/adapters/index.ts`. The `/webhook/<name>` route then works with no other routing change.
-4. Add its secrets to `Env`, and add setup steps to [operations.md](operations.md).
-5. Add a section to this document with its verification, parsing, and reply rules.
-6. Add tests for valid verification, invalid verification, each parse result, and reply failure.
-7. Update the status table in [README.md](README.md).
+1. Xác nhận nền tảng gửi được event qua HTTP webhook. Polling hoặc kết nối liên tục không phù hợp với Worker.
+2. Tạo `src/adapters/<name>.ts` implement `Adapter`.
+3. Thêm adapter vào danh sách trong `src/adapters/index.ts`. Route `/webhook/<name>` sẽ hoạt động mà không cần sửa routing ở chỗ khác.
+4. Thêm secret của nền tảng vào `Env`, và thêm các bước cài đặt vào [operations.md](operations.md).
+5. Thêm một mục vào tài liệu này với quy tắc verify, parse và reply.
+6. Thêm test cho verify đúng, verify sai, từng kết quả parse, và reply thất bại.
+7. Cập nhật bảng trạng thái trong [README.md](README.md).
 
-A new platform MUST NOT require changes in `src/commands/`. If it seems to, change the contract in a separate pull request first.
+Nền tảng mới KHÔNG ĐƯỢC đòi hỏi thay đổi trong `src/commands/`. Nếu có vẻ phải đổi, hãy sửa contract trong một pull request riêng trước.

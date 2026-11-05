@@ -1,52 +1,52 @@
-# omnibot engineering standards
+# Chuẩn kỹ thuật của omnibot
 
-These documents define how omnibot must be built. Code, reviews, and AI agents follow them.
+Bộ tài liệu này quy định cách xây dựng omnibot. Code, review và AI agent đều phải tuân theo.
 
-The repository has no implementation yet, so these documents are a specification written ahead of the code.
+Repo chưa có code, nên đây là spec được viết trước khi implement.
 
-## Documents
+## Danh sách tài liệu
 
-| Document | Scope |
+| Tài liệu | Phạm vi |
 | --- | --- |
-| [architecture.md](architecture.md) | Layers, dependency rules, request lifecycle |
-| [contracts.md](contracts.md) | Shared types, HTTP behavior, delivery semantics |
-| [adapters.md](adapters.md) | Per-platform requirements, adding a platform |
-| [commands.md](commands.md) | Writing and registering commands |
-| [security.md](security.md) | Webhook verification, secrets, logging |
-| [operations.md](operations.md) | Setup, deployment, local development, platform limits |
-| [conventions.md](conventions.md) | Code style, testing, commits, Definition of Done |
+| [architecture.md](architecture.md) | Các layer, quy tắc phụ thuộc, vòng đời request |
+| [contracts.md](contracts.md) | Type dùng chung, hành vi HTTP, cơ chế delivery |
+| [adapters.md](adapters.md) | Yêu cầu theo từng nền tảng, cách thêm nền tảng |
+| [commands.md](commands.md) | Cách viết và đăng ký lệnh |
+| [security.md](security.md) | Xác minh webhook, secret, logging |
+| [operations.md](operations.md) | Cài đặt, deploy, phát triển local, giới hạn nền tảng |
+| [conventions.md](conventions.md) | Code style, test, commit, Definition of Done |
 
-## Reading the rules
+## Cách đọc quy tắc
 
-- **MUST** and **MUST NOT** are mandatory. A deviation requires changing the document first.
-- **SHOULD** is the default. A deviation needs a stated reason in the pull request.
-- **MAY** is optional.
+- **PHẢI** và **KHÔNG ĐƯỢC** là bắt buộc. Muốn làm khác thì phải sửa tài liệu trước.
+- **NÊN** là mặc định. Muốn làm khác thì phải nêu lý do trong pull request.
+- **CÓ THỂ** là tuỳ chọn.
 
-## Source of truth
+## Nguồn chuẩn
 
-1. If documents disagree, `contracts.md` wins on types and HTTP behavior. `security.md` wins on security.
-2. These documents win over the root `README.md`, which is only an introduction and quick start.
-3. If code and documents disagree, treat it as a defect. Fix the code, or change the document in the same pull request.
+1. Nếu các tài liệu mâu thuẫn nhau, `contracts.md` được ưu tiên về type và hành vi HTTP. `security.md` được ưu tiên về bảo mật.
+2. Bộ tài liệu này được ưu tiên hơn `README.md` ở thư mục gốc, vốn chỉ là phần giới thiệu và quick start.
+3. Nếu code và tài liệu khác nhau thì đó là lỗi. Hãy sửa code, hoặc sửa tài liệu trong cùng pull request.
 
-## Status
+## Trạng thái
 
-Update this table in the pull request that changes a component's status.
+Cập nhật bảng này trong pull request làm thay đổi trạng thái của thành phần.
 
-| Component | Status |
+| Thành phần | Trạng thái |
 | --- | --- |
-| Worker entry point and pipeline | Planned |
-| Command router | Planned |
+| Entry point và pipeline của Worker | Planned |
+| Router lệnh | Planned |
 | `/ping`, `/help` | Planned |
-| Zalo adapter | Planned |
-| Telegram adapter | Planned |
-| Discord adapter (slash commands) | Planned |
-| `set-webhooks`, `register-discord` scripts | Planned |
+| Adapter Zalo | Planned |
+| Adapter Telegram | Planned |
+| Adapter Discord (slash command) | Planned |
+| Script `set-webhooks`, `register-discord` | Planned |
 
-## External facts
+## Thông tin từ bên ngoài
 
-Platform facts were checked against official documentation on 2026-11-05. Platforms change, so recheck a fact before relying on it for new work.
+Thông tin về các nền tảng được đối chiếu với tài liệu chính thức vào ngày 2026-11-05. Nền tảng có thể thay đổi, nên hãy kiểm tra lại trước khi dựa vào chúng cho việc mới.
 
-| Platform | Reference |
+| Nền tảng | Tài liệu tham khảo |
 | --- | --- |
 | Zalo | <https://bot.zaloplatforms.com/docs/> |
 | Telegram | <https://core.telegram.org/bots/api> |
@@ -54,12 +54,12 @@ Platform facts were checked against official documentation on 2026-11-05. Platfo
 | Cloudflare Workers | <https://developers.cloudflare.com/workers/platform/limits/> |
 | Cloudflare KV | <https://developers.cloudflare.com/kv/platform/limits/> |
 
-These items remain unconfirmed. Confirm each one during implementation, then remove it from this list.
+Các mục sau chưa được xác nhận. Hãy xác nhận từng mục khi implement, rồi xoá mục đó khỏi danh sách.
 
-- Zalo does not document a webhook retry policy, a response deadline, or a `secret_token` character set.
-- Zalo does not state whether `sendMessage` works in group chats.
-- Discord's interaction pages do not state a content length. The 2000-character limit comes from its message resource documentation.
-- Discord's interaction pages show no `Authorization` header on follow-up calls. Confirm that the interaction token alone is sufficient.
-- The Telegram 4096-character limit and the `/command@botname` format were read from a tool summary, not verbatim text.
-- The exact path of the `verification` object in Zalo's `setWebhook` response needs checking.
-- Ed25519 support in the Workers `crypto.subtle` API was not part of the 2026-11-05 check.
+- Zalo không ghi rõ chính sách retry webhook, deadline phản hồi, hay bộ ký tự của `secret_token`.
+- Zalo không nói rõ `sendMessage` có hoạt động trong group chat hay không.
+- Các trang interaction của Discord không nêu giới hạn độ dài nội dung. Con số 2000 ký tự lấy từ tài liệu message resource.
+- Các trang interaction của Discord không thể hiện header `Authorization` trong lời gọi follow-up. Cần xác nhận chỉ dùng interaction token là đủ.
+- Giới hạn 4096 ký tự của Telegram và dạng `/command@botname` được đọc từ bản tóm tắt của tool, chưa đối chiếu nguyên văn.
+- Cần kiểm tra đường dẫn chính xác của object `verification` trong response `setWebhook` của Zalo.
+- Việc API `crypto.subtle` của Workers hỗ trợ Ed25519 không nằm trong đợt kiểm tra ngày 2026-11-05.
