@@ -9,7 +9,7 @@ Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement co
 | Inbound | Webhook | Webhook | Interactions qua HTTP |
 | Xác minh | `X-Bot-Api-Secret-Token` | `X-Telegram-Bot-Api-Secret-Token` | Chữ ký Ed25519 |
 | Cần cho `isEnabled` | `ZALO_BOT_TOKEN`, `WEBHOOK_SECRET` | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `WEBHOOK_SECRET` | `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY` |
-| Acknowledgement | `{"ok":true}` | `{"ok":true}` | `{"type":5}` |
+| Acknowledgement | `ok()` | `ok()` | `{"type":5}` (ngoại lệ protocol) |
 | Giới hạn text | 2000 | 4096 | 2000 |
 | Group chat trong omnibot | Không | Có | Có (server) |
 | Thư viện gọi API | Client mỏng tự viết | grammY `Api` | `fetch`, kèm type từ `discord-api-types` |
@@ -21,7 +21,7 @@ Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement co
 - `parse` PHẢI validate payload bằng schema trong `schema.ts`. Xem [contracts.md](contracts.md#validate-payload).
 - `verify` PHẢI dùng helper và quy tắc trong [security.md](security.md).
 - `reply` PHẢI gửi plain text. KHÔNG ĐƯỢC đặt `parse_mode` hay chế độ định dạng khác, vì kết quả lệnh có thể chứa nội dung người dùng nhập.
-- `reply` PHẢI dùng `splitMessage(text, limit)` trong `src/lib/split-message.ts`.
+- `reply` PHẢI dùng `splitMessage(out.text, limit)` trong `src/lib/split-message.ts`.
 - `reply` PHẢI kiểm tra HTTP status và trường `ok` của nền tảng nếu có, rồi throw khi thất bại.
 - Adapter KHÔNG ĐƯỢC gọi `getUpdates` hay bất kỳ API polling nào.
 
@@ -50,7 +50,9 @@ API base: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/<method>`.
 
 | `IncomingMessage` | Nguồn |
 | --- | --- |
+| `messageId` | `message.message_id` |
 | `chatId` | `message.chat.id` |
+| `chatType` | Luôn là `private`, vì `GROUP` bị `ignore` |
 | `user.id` | `message.from.id` |
 | `user.name` | `message.from.display_name` |
 | `text` | `message.text` |
@@ -69,7 +71,9 @@ API base: `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/<method>`.
 
 | `IncomingMessage` | Nguồn |
 | --- | --- |
+| `messageId` | `String(message.message_id)` |
 | `chatId` | `String(message.chat.id)` |
+| `chatType` | `private` nếu `message.chat.type` là `private`, còn lại là `group` |
 | `user.id` | `String(message.from.id)` |
 | `user.name` | `message.from.first_name` |
 | `text` | `message.text`, chuẩn hoá như bên dưới |
@@ -108,14 +112,16 @@ Code của Worker chỉ gọi Discord bằng interaction token. Vì vậy Worker
 
 | `IncomingMessage` | Nguồn |
 | --- | --- |
+| `messageId` | `id` của interaction |
 | `chatId` | `channel_id` |
+| `chatType` | `group` nếu có `guild_id`, còn lại là `private` |
 | `user.id` | `(member?.user ?? user).id` |
 | `user.name` | `global_name` hoặc `username` của cùng user đó |
 | `text` | `` `/${data.name}` `` |
 
 Interaction trong guild để user ở `member.user`. Tin nhắn trực tiếp để user ở `user`.
 
-**Acknowledge.** Trả `{"type":5}` (`DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE`) với `Content-Type: application/json`. Response PHẢI đến trong vòng 3 giây kể từ khi có event.
+**Acknowledge.** Đây là ngoại lệ của envelope, xem [contracts.md](contracts.md#ngoại-lệ-protocol-của-nền-tảng). Trả `{"type":5}` (`DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE`) với `Content-Type: application/json`. Response PHẢI đến trong vòng 3 giây kể từ khi có event.
 
 **Reply.**
 
@@ -158,7 +164,7 @@ Slack thuộc loại webhook, nên hợp với contract hiện tại:
 | Contract | Slack |
 | --- | --- |
 | `verify` | HMAC-SHA256 của `v0:<timestamp>:<raw body>` so với `X-Slack-Signature`, và từ chối timestamp lệch quá 5 phút |
-| `parse` trả `respond` | Bước `url_verification`, trả về giá trị `challenge` |
-| `ack` | HTTP 2xx trong vòng 3 giây, nếu không Slack sẽ retry tối đa 3 lần |
+| `parse` trả `respond` | Bước `url_verification`, trả về giá trị `challenge` (ngoại lệ của envelope) |
+| `ack` | `ok()` trong vòng 3 giây, nếu không Slack sẽ retry tối đa 3 lần |
 
 Thư mục sẽ là `src/adapters/slack/`, và không có file nào ngoài adapter registry phải đổi code. Tài liệu Slack không nói rõ bước `url_verification` có được ký hay không, nên cần xác nhận khi implement.

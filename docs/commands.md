@@ -1,6 +1,6 @@
 # Lệnh
 
-Lệnh là logic không phụ thuộc nền tảng: nhận một tin nhắn và trả về nội dung trả lời.
+Lệnh là logic không phụ thuộc nền tảng: nhận một `IncomingMessage` và trả về một `OutgoingMessage`.
 
 ## Viết lệnh
 
@@ -13,7 +13,7 @@ export const hello: Command = {
   name: "hello",
   description: "Chào người dùng",
   async run(msg) {
-    return `Xin chào ${msg.user.name ?? "bạn"} từ ${msg.platform}!`;
+    return { text: `Xin chào ${msg.user.name ?? "bạn"} từ ${msg.platform}!` };
   },
 };
 ```
@@ -66,8 +66,8 @@ Lệnh đọc tham số bằng cách parse `msg.text`. Phần text sau tên lệ
   ```
 
 - Lệnh thất bại NÊN throw. Pipeline sẽ ghi log lỗi và gửi một câu trả lời chung chung.
-- `run` KHÔNG ĐƯỢC trả về text chứa secret hoặc chi tiết lỗi của hệ thống nội bộ.
-- Trả về text không dùng định dạng riêng của nền tảng.
+- `run` KHÔNG ĐƯỢC trả về `text` chứa secret hoặc chi tiết lỗi của hệ thống nội bộ.
+- `text` không dùng định dạng riêng của nền tảng.
 - Lệnh có side effect PHẢI chịu được việc nhận trùng. Xem [contracts.md](contracts.md).
 
 ## Trạng thái
@@ -78,7 +78,7 @@ Dùng `deps.env.OMNIBOT_KV` cho dữ liệu đọc nhiều, ghi ít.
 async run(msg, { env }) {
   const key = `user:${msg.platform}:${msg.user.id}:lang`;
   const lang = await env.OMNIBOT_KV.get(key);
-  return lang ? `Ngôn ngữ: ${lang}` : "Chưa đặt ngôn ngữ";
+  return { text: lang ? `Ngôn ngữ: ${lang}` : "Chưa đặt ngôn ngữ" };
 }
 ```
 

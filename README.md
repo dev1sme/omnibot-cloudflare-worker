@@ -166,7 +166,7 @@ export const hello: Command = {
   name: "hello",
   description: "Chào người dùng",
   async run(msg) {
-    return `Xin chào ${msg.user.name ?? "bạn"} từ ${msg.platform}! 👋`;
+    return { text: `Xin chào ${msg.user.name ?? "bạn"} từ ${msg.platform}! 👋` };
   },
 };
 ```

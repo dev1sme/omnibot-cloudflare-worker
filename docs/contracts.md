@@ -17,10 +17,16 @@ export interface Env {
 
 export interface IncomingMessage {
   platform: string;
+  messageId: string;
   chatId: string;
+  chatType: "private" | "group";
   user: { id: string; name?: string };
   text: string;
   raw: unknown; // Original payload. Read by the owning adapter.
+}
+
+export interface OutgoingMessage {
+  text: string;
 }
 
 export type ParseResult =
@@ -34,7 +40,7 @@ export interface Adapter {
   verify(rawBody: string, headers: Headers, env: Env): Promise<boolean>;
   parse(rawBody: string, env: Env): ParseResult;
   ack(msg: IncomingMessage): Response;
-  reply(msg: IncomingMessage, text: string, env: Env): Promise<void>;
+  reply(msg: IncomingMessage, out: OutgoingMessage, env: Env): Promise<void>;
 }
 
 export interface CommandDeps {
@@ -45,7 +51,7 @@ export interface CommandDeps {
 export interface Command {
   name: string;
   description: string;
-  run(msg: IncomingMessage, deps: CommandDeps): Promise<string>;
+  run(msg: IncomingMessage, deps: CommandDeps): Promise<OutgoingMessage>;
 }
 
 export type Route =
@@ -63,7 +69,7 @@ export type Route =
 | `verify` | PHẢI trả `false` khi thất bại, kể cả khi header thiếu hoặc sai định dạng. KHÔNG ĐƯỢC throw |
 | `parse` | PHẢI trả `ignore` với payload sai định dạng hoặc không hỗ trợ. KHÔNG ĐƯỢC throw |
 | `ack` | PHẢI trả về mà không gọi network |
-| `reply` | PHẢI chia nhỏ tin dài, và PHẢI throw nếu nền tảng từ chối tin nhắn |
+| `reply` | PHẢI chia nhỏ `out.text` nếu dài, và PHẢI throw nếu nền tảng từ chối tin nhắn |
 
 ## Validate payload
 
@@ -72,7 +78,8 @@ Mỗi adapter PHẢI khai báo schema Valibot trong `schema.ts`, và validate pa
 ```ts
 const UpdateSchema = v.object({
   message: v.object({
-    chat: v.object({ id: v.number() }),
+    message_id: v.number(),
+    chat: v.object({ id: v.number(), type: v.string() }),
     from: v.object({ id: v.number(), first_name: v.string() }),
     text: v.string(),
   }),
@@ -90,19 +97,87 @@ export function parse(rawBody: string): ParseResult {
 - `parseJson` trong `src/lib/` trả `undefined` khi JSON sai định dạng.
 - Giữ schema nhỏ. Worker chỉ có 1 giây startup, và schema lớn ở top level là nguyên nhân phổ biến khiến vượt giới hạn này.
 
+## Response envelope
+
+Mọi response do omnibot tự quyết format PHẢI dùng envelope. Thiết kế theo cùng chuẩn với `project-member-status`.
+
+```ts
+export interface ResponseMeta {
+  timestamp: number; // Unix epoch seconds
+}
+
+export interface ValueResponse<T> {
+  success: true;
+  message: string;
+  data: T;
+  meta: ResponseMeta;
+}
+
+export type ErrorCode =
+  | "UNAUTHORIZED"
+  | "NOT_FOUND"
+  | "METHOD_NOT_ALLOWED"
+  | "INTERNAL_ERROR";
+
+export interface ErrorBody {
+  code: ErrorCode;
+  details?: Record<string, string[]>;
+}
+
+export interface ErrorResponse {
+  success: false;
+  message: string;
+  error: ErrorBody;
+  meta: ResponseMeta;
+}
+```
+
+```jsonc
+// Success
+{ "success": true, "message": "OK", "data": null, "meta": { "timestamp": 1793923200 } }
+
+// Error
+{
+  "success": false,
+  "message": "Unauthorized",
+  "error": { "code": "UNAUTHORIZED" },
+  "meta": { "timestamp": 1793923200 }
+}
+```
+
+Quy tắc:
+
+- Response chỉ được tạo qua `ok()` và `fail(code)` trong `src/core/response.ts`.
+- HTTP status chỉ nằm trên status line, không lặp trong body.
+- `error.code` là chuỗi ổn định, viết `UPPER_SNAKE_CASE`. Client dựa vào `code`, không dựa vào `message`.
+- `fail(code)` lấy status và `message` từ một bảng cố định. `message` KHÔNG ĐƯỢC chứa dữ liệu runtime hay lý do chi tiết.
+- Field trong JSON của envelope viết `snake_case`.
+- API trả danh sách như dashboard sẽ thêm `ListResponse` và `PageResponse` khi thật sự cần, theo cùng shape.
+
+### Ngoại lệ: protocol của nền tảng
+
+Response do nền tảng quy định format PHẢI giữ đúng format đó, KHÔNG ĐƯỢC bọc envelope.
+
+| Response | Body |
+| --- | --- |
+| Discord `PING` | `{"type":1}` |
+| Discord acknowledgement | `{"type":5}` |
+
+Chỉ `ParseResult` loại `respond` và `ack` của adapter mới được trả format riêng. Mỗi ngoại lệ PHẢI có trong bảng này hoặc trong mục của nền tảng ở [adapters.md](adapters.md).
+
 ## Hành vi HTTP
 
 | Điều kiện | Status | Body |
 | --- | --- | --- |
-| Path không phải `/webhook/<adapter đã biết>` | 404 | Rỗng |
-| Method khác `POST` trên path webhook | 405 | Rỗng |
-| Adapter đang tắt | 404 | Rỗng |
-| Xác minh thất bại | 401 | Rỗng |
-| `parse` trả `ignore` | 200 | `{"ok":true}` |
+| Path không phải `/webhook/<adapter đã biết>` | 404 | `fail("NOT_FOUND")` |
+| Method khác `POST` trên path webhook | 405 | `fail("METHOD_NOT_ALLOWED")` |
+| Adapter đang tắt | 404 | `fail("NOT_FOUND")` |
+| Xác minh thất bại | 401 | `fail("UNAUTHORIZED")` |
+| `parse` trả `ignore` | 200 | `ok()` |
 | `parse` trả `respond` | Do adapter đặt | Do adapter đặt |
-| Nội dung không phải lệnh | 200 | `{"ok":true}` |
+| Nội dung không phải lệnh | 200 | `ok()` |
 | Lệnh hợp lệ hoặc lệnh không tồn tại đã được nhận | Từ `ack` | Từ `ack` |
-| Lỗi không lường trước khi chưa acknowledge | 500 | Rỗng |
+| Lỗi không lường trước khi chưa acknowledge | 500 | `fail("INTERNAL_ERROR")` |
 
 Lệnh chạy lỗi KHÔNG ĐƯỢC làm thay đổi kết quả HTTP, vì acknowledgement đã được gửi đi.
 

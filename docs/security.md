@@ -5,7 +5,7 @@ Các endpoint webhook là public. Hãy coi mọi request là thù địch cho đ
 ## Xác minh
 
 - Mọi adapter PHẢI xác minh mọi request trước khi parse body.
-- Kiểm tra thất bại PHẢI trả 401 với body rỗng và không nêu lý do. Code mẫu của Zalo dùng 403, nhưng tài liệu của Zalo không yêu cầu status cụ thể.
+- Kiểm tra thất bại PHẢI trả 401 với `fail("UNAUTHORIZED")` và không nêu lý do. Discord cũng yêu cầu 401. Code mẫu của Zalo dùng 403, nhưng tài liệu của Zalo không yêu cầu status cụ thể.
 - `verify` PHẢI fail closed. Header thiếu hoặc giá trị sai định dạng thì trả `false`.
 - KHÔNG ĐƯỢC tự viết thuật toán crypto. Dùng thư viện đã chọn hoặc `crypto.subtle` của runtime.
 
@@ -103,5 +103,6 @@ Ví dụ, với lỗi của grammY:
 ## Output
 
 - Thông báo lỗi người dùng thấy PHẢI chung chung.
+- `message` và `error` trong envelope KHÔNG ĐƯỢC chứa stack trace, chi tiết lỗi nội bộ hay lý do xác minh thất bại.
 - `reply` PHẢI gửi plain text, để nội dung người dùng nhập không chèn được markup của nền tảng.
 - Output Discord có thể lặp lại nội dung người dùng nhập KHÔNG ĐƯỢC kích hoạt mention. Đặt `allowed_mentions: { parse: [] }` trong reply.

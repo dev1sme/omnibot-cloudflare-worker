@@ -86,6 +86,7 @@ Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 | `verify` | Đúng, sai giá trị, thiếu header, sai định dạng |
 | `parse` | Từng dòng trong bảng parse của adapter, cộng JSON sai định dạng |
 | `reply` | Cấu trúc request, chia tin dài, throw khi nền tảng từ chối |
+| Response | `ok()` và `fail()` đúng shape, status và `message` cố định theo `code` |
 | Router | Từng dòng trong bảng routing ở [commands.md](commands.md) |
 | `splitMessage` | Đúng giới hạn, vượt giới hạn một đơn vị, không tách surrogate pair, không có chunk rỗng |
 | Danh sách lệnh | Quy tắc tên và mô tả, tên không trùng |

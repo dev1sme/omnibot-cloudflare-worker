@@ -23,6 +23,7 @@ Các chuẩn trong `docs/` là bắt buộc. Hãy bắt đầu từ `docs/README
 - Acknowledge trước, rồi chạy lệnh trong `ctx.waitUntil()`.
 - Không bao giờ log URL API của nền tảng. URL của Zalo và Telegram chứa bot token.
 - Không dùng KV cho deduplication, counter hoặc lock.
+- Tạo response bằng `ok()` và `fail()`. Chỉ protocol của nền tảng, như Discord `PING` và ack, mới không dùng envelope.
 - Nếu code và `docs/` khác nhau, hãy sửa một trong hai trong cùng thay đổi, và cập nhật bảng trạng thái trong `docs/README.md`.
 
 ## Lệnh

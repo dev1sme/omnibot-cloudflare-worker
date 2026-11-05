@@ -8,7 +8,7 @@ omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic
 | --- | --- | --- |
 | Entry point | `src/index.ts` | Export Worker cho runtime |
 | Composition root | `src/app.ts` | Khai báo route Hono, nối adapter, core và command |
-| Core | `src/core/` | Type, pipeline và router, không biết nền tảng hay lệnh cụ thể |
+| Core | `src/core/` | Type, pipeline, router và response envelope, không biết nền tảng hay lệnh cụ thể |
 | Adapter | `src/adapters/<name>/` | Xác minh, parse, acknowledge và reply cho một nền tảng |
 | Command | `src/commands/` | Logic không phụ thuộc nền tảng |
 | Library | `src/lib/` | Helper dùng chung như `splitMessage` và `secretEquals` |
@@ -20,7 +20,7 @@ omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic
 | --- | --- |
 | `src/app.ts` | Tất cả các layer trong `src/` |
 | `src/core/` | `src/lib/` |
-| `src/adapters/<name>/` | `src/core/types.ts`, `src/lib/`, file trong chính thư mục của nó |
+| `src/adapters/<name>/` | `src/core/types.ts`, `src/core/response.ts`, `src/lib/`, file trong chính thư mục của nó |
 | `src/commands/` | `src/core/types.ts`, `src/lib/` |
 | `src/lib/` | Không import layer nào |
 | `scripts/` | `src/commands/`, `src/core/types.ts` |
@@ -41,6 +41,7 @@ src/
 ├── core/
 │   ├── types.ts            # Contracts from contracts.md
 │   ├── pipeline.ts         # Request lifecycle
+│   ├── response.ts         # Response envelope helpers
 │   └── router.ts           # Command resolution
 ├── adapters/
 │   ├── index.ts            # Adapter registry
@@ -78,9 +79,15 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.all("/webhook/:platform", (c) => {
   const adapter = adapters.find((a) => a.name === c.req.param("platform"));
-  if (!adapter) return c.body(null, 404);
-  if (c.req.method !== "POST") return c.body(null, 405);
+  if (!adapter) return fail("NOT_FOUND");
+  if (c.req.method !== "POST") return fail("METHOD_NOT_ALLOWED");
   return handleWebhook(c.req.raw, adapter, commands, c.env, c.executionCtx);
+});
+
+app.notFound(() => fail("NOT_FOUND"));
+app.onError((error) => {
+  logUnexpectedError(error);
+  return fail("INTERNAL_ERROR");
 });
 ```
 
@@ -94,21 +101,21 @@ async function handleWebhook(
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
-  if (!adapter.isEnabled(env)) return new Response(null, { status: 404 });
+  if (!adapter.isEnabled(env)) return fail("NOT_FOUND");
 
   // The body can be read only once, so the pipeline owns this read.
   const rawBody = await req.text();
 
   if (!(await adapter.verify(rawBody, req.headers, env))) {
-    return new Response(null, { status: 401 });
+    return fail("UNAUTHORIZED");
   }
 
   const parsed = adapter.parse(rawBody, env);
   if (parsed.kind === "respond") return parsed.response;
-  if (parsed.kind === "ignore") return Response.json({ ok: true });
+  if (parsed.kind === "ignore") return ok();
 
   const route = resolve(parsed.msg.text, commands);
-  if (route.kind === "none") return Response.json({ ok: true });
+  if (route.kind === "none") return ok();
 
   ctx.waitUntil(execute(route, parsed.msg, adapter, env, ctx));
   return adapter.ack(parsed.msg);
@@ -137,18 +144,18 @@ Vì vậy mọi nền tảng đi chung một luồng: acknowledge trước, sau 
 
 ```ts
 async function execute(route, msg, adapter, env, ctx) {
-  let text: string;
+  let out: OutgoingMessage;
   try {
-    text = route.kind === "unknown"
-      ? UNKNOWN_COMMAND_TEXT
+    out = route.kind === "unknown"
+      ? UNKNOWN_COMMAND_REPLY
       : await route.command.run(msg, { env, ctx });
   } catch (error) {
     logError("command_failed", msg, error);
-    text = COMMAND_FAILED_TEXT;
+    out = COMMAND_FAILED_REPLY;
   }
 
   try {
-    await adapter.reply(msg, text, env);
+    await adapter.reply(msg, out, env);
   } catch (error) {
     logError("reply_failed", msg, error);
   }
