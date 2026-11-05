@@ -6,46 +6,82 @@ omnibot là một Cloudflare Worker phục vụ nhiều nền tảng chat. Logic
 
 | Layer | Vị trí | Trách nhiệm |
 | --- | --- | --- |
-| Entry point | `src/index.ts` | Khớp route, chạy pipeline, chuyển kết quả thành HTTP |
-| Adapter | `src/adapters/` | Xác minh, parse, acknowledge và reply cho một nền tảng |
-| Router | `src/router.ts` | Ánh xạ nội dung tin nhắn sang lệnh |
+| Entry point | `src/index.ts` | Export Worker cho runtime |
+| Composition root | `src/app.ts` | Khai báo route Hono, nối adapter, core và command |
+| Core | `src/core/` | Type, pipeline và router, không biết nền tảng hay lệnh cụ thể |
+| Adapter | `src/adapters/<name>/` | Xác minh, parse, acknowledge và reply cho một nền tảng |
 | Command | `src/commands/` | Logic không phụ thuộc nền tảng |
 | Library | `src/lib/` | Helper dùng chung như `splitMessage` và `secretEquals` |
 | Script | `scripts/` | Tác vụ cài đặt chạy một lần trên máy developer |
 
 ## Quy tắc phụ thuộc
 
-- Command KHÔNG ĐƯỢC import từ `src/adapters/`.
-- Command KHÔNG NÊN đọc `msg.raw` hoặc rẽ nhánh hành vi theo `msg.platform`. Hiển thị tên nền tảng thì được.
-- Adapter KHÔNG ĐƯỢC import từ `src/commands/` hoặc `src/router.ts`.
-- Router KHÔNG ĐƯỢC import từ `src/adapters/`.
-- `src/lib/` KHÔNG ĐƯỢC import từ layer nào khác.
-- Code của Worker KHÔNG ĐƯỢC import từ `scripts/`.
+| Module | CÓ THỂ import |
+| --- | --- |
+| `src/app.ts` | Tất cả các layer trong `src/` |
+| `src/core/` | `src/lib/` |
+| `src/adapters/<name>/` | `src/core/types.ts`, `src/lib/`, file trong chính thư mục của nó |
+| `src/commands/` | `src/core/types.ts`, `src/lib/` |
+| `src/lib/` | Không import layer nào |
+| `scripts/` | `src/commands/`, `src/core/types.ts` |
 
-`src/index.ts` là module duy nhất kết nối adapter, router và command.
+- Adapter KHÔNG ĐƯỢC import adapter khác. Phần dùng chung phải chuyển vào `src/lib/`.
+- Code của Worker KHÔNG ĐƯỢC import từ `scripts/`.
+- Command KHÔNG NÊN đọc `msg.raw` hoặc rẽ nhánh hành vi theo `msg.platform`. Hiển thị tên nền tảng thì được.
+- Thư viện của một nền tảng chỉ được import trong thư mục adapter đó.
+
+`src/app.ts` là module duy nhất kết nối adapter, core và command.
 
 ## Cấu trúc thư mục
 
 ```
 src/
-├── index.ts              # Routes and pipeline
-├── types.ts              # Contracts from contracts.md
-├── router.ts             # Command resolution
+├── index.ts                # Worker entry point
+├── app.ts                  # Hono routes, wires the layers together
+├── core/
+│   ├── types.ts            # Contracts from contracts.md
+│   ├── pipeline.ts         # Request lifecycle
+│   └── router.ts           # Command resolution
 ├── adapters/
-│   ├── index.ts          # Adapter list
-│   ├── zalo.ts
-│   ├── telegram.ts
-│   └── discord.ts
+│   ├── index.ts            # Adapter registry
+│   ├── telegram/
+│   │   ├── index.ts        # Exports the adapter object
+│   │   ├── verify.ts
+│   │   ├── parse.ts
+│   │   ├── reply.ts
+│   │   ├── schema.ts       # Payload schema
+│   │   └── client.ts       # Optional: thin API client
+│   ├── zalo/
+│   └── discord/
 ├── commands/
-│   ├── index.ts          # Command list
+│   ├── index.ts            # Command registry
 │   ├── ping.ts
 │   └── help.ts
 └── lib/
+    ├── parse-json.ts
     ├── secret-equals.ts
     └── split-message.ts
 scripts/
 ├── set-webhooks.ts
 └── register-discord.ts
+```
+
+- Test đặt cạnh file được test, ví dụ `src/core/router.test.ts`.
+- Thêm nền tảng chỉ cần thêm một thư mục trong `src/adapters/` và một dòng trong registry. Xem [adapters.md](adapters.md#thêm-nền-tảng).
+- Thêm lệnh chỉ cần thêm một file trong `src/commands/` và một dòng trong registry.
+- Chỉ tạo thư mục mới cấp `src/` khi có nhu cầu thật, và phải cập nhật tài liệu này trong cùng pull request.
+
+## Routing
+
+```ts
+const app = new Hono<{ Bindings: Env }>();
+
+app.all("/webhook/:platform", (c) => {
+  const adapter = adapters.find((a) => a.name === c.req.param("platform"));
+  if (!adapter) return c.body(null, 404);
+  if (c.req.method !== "POST") return c.body(null, 405);
+  return handleWebhook(c.req.raw, adapter, commands, c.env, c.executionCtx);
+});
 ```
 
 ## Vòng đời request
@@ -54,6 +90,7 @@ scripts/
 async function handleWebhook(
   req: Request,
   adapter: Adapter,
+  commands: Command[],
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {

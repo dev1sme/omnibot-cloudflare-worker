@@ -17,7 +17,9 @@ Các chuẩn trong `docs/` là bắt buộc. Hãy bắt đầu từ `docs/README
 ## Các quy tắc dễ vi phạm
 
 - Đọc request body một lần trong pipeline. Verify trước khi parse.
-- Command không được import adapter.
+- Command không được import adapter, và adapter không được import adapter khác.
+- Ưu tiên thư viện trong `docs/conventions.md` thay vì tự viết. Không tự viết crypto.
+- Mỗi nền tảng nằm gọn trong `src/adapters/<name>/`.
 - Acknowledge trước, rồi chạy lệnh trong `ctx.waitUntil()`.
 - Không bao giờ log URL API của nền tảng. URL của Zalo và Telegram chứa bot token.
 - Không dùng KV cho deduplication, counter hoặc lock.

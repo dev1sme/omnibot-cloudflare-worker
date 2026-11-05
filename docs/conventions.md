@@ -13,7 +13,40 @@ Code, comment, identifier và commit message PHẢI viết bằng tiếng Anh. C
 - Dùng `import type` cho import chỉ có type.
 - Dùng named export. Default export duy nhất là Worker handler trong `src/index.ts`, do runtime yêu cầu.
 - Dùng Web API (`fetch`, `crypto.subtle`, `Response`). Không thêm API chỉ có trên Node.js vào code của Worker.
-- Giữ runtime dependency ở mức tối thiểu. Mỗi dependency làm tăng bundle và rủi ro supply chain, nên pull request thêm dependency PHẢI nêu lý do.
+
+## Thư viện
+
+NÊN dùng thư viện thay vì tự viết, nếu có thư viện đạt các điều kiện dưới đây. KHÔNG ĐƯỢC tự viết crypto.
+
+### Điều kiện chọn
+
+Thư viện PHẢI:
+
+- Chạy được trong Workers runtime, được xác nhận bằng test chạy trong runtime đó.
+- Còn được bảo trì, và có license tương thích với MIT.
+- Có TypeScript types.
+- Không làm vượt giới hạn CPU và startup trong [operations.md](operations.md#giới-hạn-free-tier).
+
+Thư viện KHÔNG ĐƯỢC chiếm luồng xử lý request trong [architecture.md](architecture.md#vòng-đời-request). Với SDK kiểu framework, chỉ dùng phần API client hoặc helper.
+
+### Khi nào được tự viết
+
+Chỉ tự viết khi thoả một trong hai điều kiện, và PHẢI nêu lý do trong pull request:
+
+- Không có thư viện nào đạt điều kiện.
+- Phần code nhỏ đến mức thư viện không đáng so với chi phí bundle và rủi ro supply chain, ví dụ `parseJson`, `splitMessage`.
+
+### Thư viện đã chọn
+
+| Việc | Thư viện | Ghi chú |
+| --- | --- | --- |
+| Routing | `hono` | |
+| Validate payload | `valibot` | Nhẹ hơn Zod, phù hợp giới hạn CPU và startup |
+| Gọi API Telegram | `grammy` | Chỉ dùng class `Api` |
+| Chữ ký Discord | `discord-interactions` | Chỉ dùng `verifyKey` |
+| Type của Discord | `discord-api-types` | Chỉ dùng type |
+
+Muốn đổi hoặc thêm thư viện vào bảng này thì sửa tài liệu trong cùng pull request.
 
 ## Đặt tên
 
@@ -43,7 +76,7 @@ const MAX_TEXT_LENGTH = 4096;
 
 ## Test
 
-Stack là Vitest với `@cloudflare/vitest-pool-workers`, để test chạy trong Workers runtime.
+Stack là Vitest với `@cloudflare/vitest-pool-workers`, để test chạy trong Workers runtime. File test đặt cạnh code, ví dụ `src/core/router.test.ts`.
 
 Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 

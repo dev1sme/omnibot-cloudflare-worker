@@ -12,9 +12,13 @@ Adapter chứa mọi thứ riêng của một nền tảng. Adapter implement co
 | Acknowledgement | `{"ok":true}` | `{"ok":true}` | `{"type":5}` |
 | Giới hạn text | 2000 | 4096 | 2000 |
 | Group chat trong omnibot | Không | Có | Có (server) |
+| Thư viện gọi API | Client mỏng tự viết | grammY `Api` | `fetch`, kèm type từ `discord-api-types` |
+| Thư viện verify | `secretEquals` | `secretEquals` | `discord-interactions` |
 
 ## Quy tắc chung
 
+- Mỗi adapter nằm trong `src/adapters/<name>/`, với các file theo [architecture.md](architecture.md#cấu-trúc-thư-mục).
+- `parse` PHẢI validate payload bằng schema trong `schema.ts`. Xem [contracts.md](contracts.md#validate-payload).
 - `verify` PHẢI dùng helper và quy tắc trong [security.md](security.md).
 - `reply` PHẢI gửi plain text. KHÔNG ĐƯỢC đặt `parse_mode` hay chế độ định dạng khác, vì kết quả lệnh có thể chứa nội dung người dùng nhập.
 - `reply` PHẢI dùng `splitMessage(text, limit)` trong `src/lib/split-message.ts`.
@@ -53,6 +57,8 @@ API base: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/<method>`.
 
 **Reply.** `POST /sendMessage` với `chat_id` và `text`. Độ dài text PHẢI từ 1 đến 2000.
 
+**Thư viện.** Không có SDK chính thức trong kết quả tìm kiếm ngày 2026-11-05, chỉ có package cộng đồng như `zalo-bot-js` và `zalo-bot-node-sdk`, chưa được đánh giá. Mặc định dùng client mỏng trong `client.ts`, vì package này sẽ giữ bot token và omnibot chỉ cần `sendMessage` với `setWebhook`.
+
 ## Telegram
 
 API base: `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/<method>`.
@@ -76,7 +82,13 @@ API base: `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/<method>`.
 | `/ping@this_bot arg` | `text` là `/ping arg` |
 | `/ping@other_bot` | `ignore` |
 
-**Reply.** `POST /sendMessage` với `chat_id` và `text`. Không reply qua webhook response: Telegram cho phép cách này, nhưng bot không biết được request có thành công hay không.
+**Reply.** Gọi `sendMessage` qua grammY `Api`. Không reply qua webhook response: Telegram cho phép cách này, nhưng bot không biết được request có thành công hay không.
+
+```ts
+await new Api(env.TELEGRAM_BOT_TOKEN).sendMessage(msg.chatId, chunk);
+```
+
+**Thư viện.** Chỉ dùng class `Api` của grammY. KHÔNG ĐƯỢC dùng `Bot` hay `webhookCallback`, vì chúng chiếm luồng xử lý request và có timeout riêng 10 giây, trái với pipeline của omnibot. Nếu `Api` không chạy độc lập được trên Workers, thay bằng client mỏng trong `client.ts`.
 
 ## Discord
 
@@ -84,7 +96,7 @@ API base: `https://discord.com/api/v10`.
 
 Code của Worker chỉ gọi Discord bằng interaction token. Vì vậy Worker KHÔNG ĐƯỢC giữ `DISCORD_BOT_TOKEN`, token này chỉ `scripts/register-discord.ts` cần.
 
-**Verify.** Xem [security.md](security.md). Kiểm tra thất bại PHẢI trả 401. Discord cố ý gửi chữ ký sai, và sẽ gỡ endpoint URL nếu request đó được chấp nhận.
+**Verify.** Dùng `verifyKey` của `discord-interactions`, xem [security.md](security.md). KHÔNG ĐƯỢC dùng `verifyKeyMiddleware`, vì đó là middleware kiểu Express. Kiểm tra thất bại PHẢI trả 401. Discord cố ý gửi chữ ký sai, và sẽ gỡ endpoint URL nếu request đó được chấp nhận.
 
 **Parse.**
 
@@ -119,12 +131,34 @@ Token có hiệu lực 15 phút. Lần `PATCH` đầu PHẢI retry khi gặp 404
 
 ## Thêm nền tảng
 
-1. Xác nhận nền tảng gửi được event qua HTTP webhook. Polling hoặc kết nối liên tục không phù hợp với Worker.
-2. Tạo `src/adapters/<name>.ts` implement `Adapter`.
-3. Thêm adapter vào danh sách trong `src/adapters/index.ts`. Route `/webhook/<name>` sẽ hoạt động mà không cần sửa routing ở chỗ khác.
+Trước tiên, xác định nền tảng thuộc loại nào.
+
+| Loại | Dấu hiệu | Cách làm |
+| --- | --- | --- |
+| Webhook | Gửi event qua HTTP và có cách xác minh request | Thêm adapter theo các bước bên dưới |
+| Kết nối liên tục | Chỉ gửi event qua WebSocket | Worker không tự giữ được kết nối. Cần thiết kế riêng, ví dụ Durable Objects, và sửa [architecture.md](architecture.md) trước |
+| Event không phải tin nhắn | Payload không ánh xạ được sang `IncomingMessage` | Không ép vào `IncomingMessage`. Sửa [contracts.md](contracts.md) trong một pull request riêng trước |
+
+Các bước với nền tảng webhook:
+
+1. Tạo `src/adapters/<name>/` với các file theo [architecture.md](architecture.md#cấu-trúc-thư-mục).
+2. Chọn thư viện theo [conventions.md](conventions.md#thư-viện).
+3. Thêm adapter vào `src/adapters/index.ts`. Route `/webhook/<name>` sẽ hoạt động mà không cần sửa routing.
 4. Thêm secret của nền tảng vào `Env`, và thêm các bước cài đặt vào [operations.md](operations.md).
 5. Thêm một mục vào tài liệu này với quy tắc verify, parse và reply.
 6. Thêm test cho verify đúng, verify sai, từng kết quả parse, và reply thất bại.
 7. Cập nhật bảng trạng thái trong [README.md](README.md).
 
 Nền tảng mới KHÔNG ĐƯỢC đòi hỏi thay đổi trong `src/commands/`. Nếu có vẻ phải đổi, hãy sửa contract trong một pull request riêng trước.
+
+### Ví dụ: Slack
+
+Slack thuộc loại webhook, nên hợp với contract hiện tại:
+
+| Contract | Slack |
+| --- | --- |
+| `verify` | HMAC-SHA256 của `v0:<timestamp>:<raw body>` so với `X-Slack-Signature`, và từ chối timestamp lệch quá 5 phút |
+| `parse` trả `respond` | Bước `url_verification`, trả về giá trị `challenge` |
+| `ack` | HTTP 2xx trong vòng 3 giây, nếu không Slack sẽ retry tối đa 3 lần |
+
+Thư mục sẽ là `src/adapters/slack/`, và không có file nào ngoài adapter registry phải đổi code. Tài liệu Slack không nói rõ bước `url_verification` có được ký hay không, nên cần xác nhận khi implement.

@@ -7,6 +7,7 @@ Các endpoint webhook là public. Hãy coi mọi request là thù địch cho đ
 - Mọi adapter PHẢI xác minh mọi request trước khi parse body.
 - Kiểm tra thất bại PHẢI trả 401 với body rỗng và không nêu lý do. Code mẫu của Zalo dùng 403, nhưng tài liệu của Zalo không yêu cầu status cụ thể.
 - `verify` PHẢI fail closed. Header thiếu hoặc giá trị sai định dạng thì trả `false`.
+- KHÔNG ĐƯỢC tự viết thuật toán crypto. Dùng thư viện đã chọn hoặc `crypto.subtle` của runtime.
 
 ### Shared secret (Zalo, Telegram)
 
@@ -27,26 +28,18 @@ KHÔNG ĐƯỢC so sánh secret bằng `===`.
 
 ### Chữ ký Ed25519 (Discord)
 
-Xác minh `X-Signature-Ed25519` trên các byte của `X-Signature-Timestamp` nối với raw body. Chữ ký và public key được mã hoá hex.
+Dùng `verifyKey` của `discord-interactions`. Hàm này kiểm tra `X-Signature-Ed25519` trên các byte của `X-Signature-Timestamp` nối với raw body.
 
 ```ts
-const key = await crypto.subtle.importKey(
-  "raw",
-  hexToBytes(env.DISCORD_PUBLIC_KEY),
-  { name: "Ed25519" },
-  false,
-  ["verify"],
-);
-return crypto.subtle.verify(
-  { name: "Ed25519" },
-  key,
-  hexToBytes(signature),
-  encoder.encode(timestamp + rawBody),
-);
+const signature = headers.get("X-Signature-Ed25519");
+const timestamp = headers.get("X-Signature-Timestamp");
+if (!signature || !timestamp) return false;
+
+return verifyKey(rawBody, signature, timestamp, env.DISCORD_PUBLIC_KEY);
 ```
 
 - Các byte được ký PHẢI lấy từ body gốc. Parse rồi serialize lại JSON sẽ làm hỏng chữ ký.
-- Bắt lỗi do đầu vào sai định dạng và trả `false`.
+- `verifyKey` nuốt mọi lỗi và trả `false`, nên lỗi runtime trông giống chữ ký sai. Test PHẢI có trường hợp chữ ký đúng chạy trong Workers runtime để phát hiện việc này.
 
 ## Secret
 
@@ -94,7 +87,18 @@ Log KHÔNG ĐƯỢC chứa:
 
 Log CÓ THỂ chứa tên nền tảng, tên lệnh, chat ID, response status, và thông báo lỗi đã được làm sạch. Log entry NÊN chỉ chứa ID khi cần cho việc debug.
 
-Coi lỗi từ `fetch` là nhạy cảm. Hãy log status và mã lỗi của nền tảng, không log nguyên object lỗi.
+Coi lỗi từ `fetch` và SDK là nhạy cảm. Hãy log status và mã lỗi của nền tảng, không log nguyên object lỗi.
+
+Ví dụ, với lỗi của grammY:
+
+- `GrammyError`: chỉ log `error_code` và `method`. Không log `payload`, vì trường này chứa dữ liệu request.
+- `HttpError`: chỉ log tên lỗi. Không log `error` hay `message`, vì tài liệu không đảm bảo chúng không chứa URL có token.
+
+## Dependency
+
+- PHẢI commit `package-lock.json`, và cài trong CI bằng `npm ci`.
+- Thêm hoặc nâng cấp package giữ token, hoặc xử lý chữ ký, PHẢI được review riêng.
+- Chạy `npm audit` trước mỗi lần deploy production.
 
 ## Output
 

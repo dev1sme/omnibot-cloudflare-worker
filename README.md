@@ -160,7 +160,7 @@ Xong! Nhắn `/ping` cho bot trên bất kỳ nền tảng nào.
 Tạo file `src/commands/hello.ts`:
 
 ```ts
-import type { Command } from "../types";
+import type { Command } from "../core/types";
 
 export const hello: Command = {
   name: "hello",
@@ -184,7 +184,7 @@ Lệnh này tự chạy trên cả Zalo, Telegram và Discord. Riêng với Disc
 
 ## 🔌 Thêm nền tảng mới
 
-Viết một adapter trong `src/adapters/` và thêm nó vào danh sách trong `src/adapters/index.ts`. Route `/webhook/<name>` sẽ tự hoạt động.
+Tạo thư mục `src/adapters/<name>/` và thêm adapter vào danh sách trong `src/adapters/index.ts`. Route `/webhook/<name>` sẽ tự hoạt động.
 
 Interface xem [docs/contracts.md](docs/contracts.md), các bước xem [docs/adapters.md](docs/adapters.md#thêm-nền-tảng).
 

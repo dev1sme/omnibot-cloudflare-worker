@@ -7,7 +7,7 @@ Lệnh là logic không phụ thuộc nền tảng: nhận một tin nhắn và 
 Tạo `src/commands/hello.ts`:
 
 ```ts
-import type { Command } from "../types";
+import type { Command } from "../core/types";
 
 export const hello: Command = {
   name: "hello",
@@ -39,7 +39,7 @@ PHẢI có test kiểm tra mọi lệnh đã đăng ký theo các quy tắc này
 
 ## Quy tắc routing
 
-`resolve(text, commands)` trong `src/router.ts` hoạt động như sau.
+`resolve(text, commands)` trong `src/core/router.ts` hoạt động như sau.
 
 | Đầu vào | Route |
 | --- | --- |

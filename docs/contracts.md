@@ -1,6 +1,6 @@
 # Contract
 
-`src/types.ts` PHẢI implement các type này. Thay đổi ở đây ảnh hưởng đến mọi adapter và command, nên hãy cập nhật tài liệu này trong cùng pull request.
+`src/core/types.ts` PHẢI implement các type này. Thay đổi ở đây ảnh hưởng đến mọi adapter và command, nên hãy cập nhật tài liệu này trong cùng pull request.
 
 ## Type
 
@@ -64,6 +64,31 @@ export type Route =
 | `parse` | PHẢI trả `ignore` với payload sai định dạng hoặc không hỗ trợ. KHÔNG ĐƯỢC throw |
 | `ack` | PHẢI trả về mà không gọi network |
 | `reply` | PHẢI chia nhỏ tin dài, và PHẢI throw nếu nền tảng từ chối tin nhắn |
+
+## Validate payload
+
+Mỗi adapter PHẢI khai báo schema Valibot trong `schema.ts`, và validate payload sau khi verify thành công.
+
+```ts
+const UpdateSchema = v.object({
+  message: v.object({
+    chat: v.object({ id: v.number() }),
+    from: v.object({ id: v.number(), first_name: v.string() }),
+    text: v.string(),
+  }),
+});
+
+export function parse(rawBody: string): ParseResult {
+  const result = v.safeParse(UpdateSchema, parseJson(rawBody));
+  if (!result.success) return { kind: "ignore" };
+  // Map result.output to IncomingMessage.
+}
+```
+
+- Schema chỉ khai báo các trường adapter dùng. KHÔNG ĐƯỢC dùng object strict, vì nền tảng có thể thêm trường mới bất kỳ lúc nào.
+- Dùng `v.safeParse`, không dùng `v.parse`, vì `parse` của adapter không được throw.
+- `parseJson` trong `src/lib/` trả `undefined` khi JSON sai định dạng.
+- Giữ schema nhỏ. Worker chỉ có 1 giây startup, và schema lớn ở top level là nguyên nhân phổ biến khiến vượt giới hạn này.
 
 ## Hành vi HTTP
 

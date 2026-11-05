@@ -146,6 +146,8 @@ Nền tảng không gọi được `localhost`, và Zalo từ chối rõ ràng �
 | --- | --- | --- |
 | Request | 100.000 mỗi ngày, reset lúc nửa đêm UTC | Vượt mức sẽ trả Error 1027 |
 | CPU time | 10 ms mỗi HTTP request | Tránh parse và tính toán nặng |
+| Startup | 1 giây cho global scope, lỗi `Script startup exceeded CPU time limit` | Không tạo object lớn ở top level |
+| Kích thước Worker | 64 MiB chưa nén | Kiểm tra bằng `npx wrangler deploy --outdir bundled/ --dry-run` |
 | Subrequest | 50 mỗi invocation | Reply dài tốn một subrequest cho mỗi chunk |
 | `waitUntil` | 30 giây sau response, dùng chung trong một request | Đặt timeout cho lời gọi ra ngoài |
 | Lượt đọc KV | 100.000 mỗi ngày | |

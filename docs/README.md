@@ -34,7 +34,7 @@ Cập nhật bảng này trong pull request làm thay đổi trạng thái của
 
 | Thành phần | Trạng thái |
 | --- | --- |
-| Entry point và pipeline của Worker | Planned |
+| Entry point, Hono routes và pipeline | Planned |
 | Router lệnh | Planned |
 | `/ping`, `/help` | Planned |
 | Adapter Zalo | Planned |
@@ -62,4 +62,7 @@ Các mục sau chưa được xác nhận. Hãy xác nhận từng mục khi imp
 - Các trang interaction của Discord không thể hiện header `Authorization` trong lời gọi follow-up. Cần xác nhận chỉ dùng interaction token là đủ.
 - Giới hạn 4096 ký tự của Telegram và dạng `/command@botname` được đọc từ bản tóm tắt của tool, chưa đối chiếu nguyên văn.
 - Cần kiểm tra đường dẫn chính xác của object `verification` trong response `setWebhook` của Zalo.
-- Việc API `crypto.subtle` của Workers hỗ trợ Ed25519 không nằm trong đợt kiểm tra ngày 2026-11-05.
+- Tài liệu `discord-interactions` không nêu hỗ trợ Workers, và trang đã đọc của Cloudflare không nêu Ed25519 trong `crypto.subtle`. Mã nguồn thư viện có nhánh dành cho Workers, nhưng cần test thật.
+- Tài liệu grammY không nói rõ `Api` dùng độc lập được, và không nói lỗi có chứa token hay URL hay không. Cần kiểm tra mã nguồn và test trên Workers.
+- `grammy` phụ thuộc `node-fetch` và `abort-controller`. Cần đo bundle và CPU với giới hạn 10 ms của free tier.
+- Trang Hono đã đọc không nhắc `c.executionCtx`. Cần xác nhận trong API docs của Hono.
