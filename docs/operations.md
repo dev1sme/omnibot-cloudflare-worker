@@ -212,7 +212,7 @@ Dùng GitHub Actions.
 
 | Sự kiện | Việc chạy |
 | --- | --- |
-| Mỗi pull request | `npm ci`, `npm run lint`, `npm test`, `npm audit`, `npx wrangler deploy --dry-run` |
+| Mỗi pull request | `npm ci`, `npm run lint`, `npm test`, `npm audit --omit=dev`, `npx wrangler deploy --dry-run --env=""` |
 | Push vào `main`, sau khi các bước trên pass | Deploy production bằng `cloudflare/wrangler-action@v4` |
 
 ```yaml

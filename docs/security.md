@@ -101,7 +101,7 @@ Adapter PHẢI chuyển lỗi gốc thành `PlatformError` trước khi throw. V
 
 - PHẢI commit `package-lock.json`, và cài trong CI bằng `npm ci`.
 - Thêm hoặc nâng cấp package giữ token, hoặc xử lý chữ ký, PHẢI được review riêng.
-- Chạy `npm audit` trước mỗi lần deploy production.
+- CI chạy `npm audit --omit=dev` để chỉ chặn lỗ hổng trong dependency chạy trên production.
 
 ## Output
 

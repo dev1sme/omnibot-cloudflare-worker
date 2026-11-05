@@ -1,0 +1,20 @@
+name = "omnibot"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+
+[observability]
+enabled = true
+
+[vars]
+TELEGRAM_BOT_USERNAME = "your_bot"
+
+[[kv_namespaces]]
+binding = "OMNIBOT_KV"
+id = "00000000000000000000000000000000" # Replace with the production KV id
+
+[env.dev.vars]
+TELEGRAM_BOT_USERNAME = "your_dev_bot"
+
+[[env.dev.kv_namespaces]]
+binding = "OMNIBOT_KV"
+id = "00000000000000000000000000000001" # Replace with the dev KV id

@@ -1,0 +1,41 @@
+{
+  "name": "omnibot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.21.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev --env dev",
+    "deploy": "wrangler deploy --env=\"\"",
+    "deploy:dev": "wrangler deploy --env dev",
+    "tail": "wrangler tail",
+    "tail:dev": "wrangler tail --env dev",
+    "set-webhooks": "tsx --env-file=.dev.vars.production scripts/set-webhooks.ts",
+    "set-webhooks:dev": "tsx --env-file=.dev.vars.dev scripts/set-webhooks.ts",
+    "register-discord": "tsx --env-file=.dev.vars.production scripts/register-discord.ts",
+    "register-discord:dev": "tsx --env-file=.dev.vars.dev scripts/register-discord.ts",
+    "lint": "eslint . && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "discord-interactions": "^4.4.0",
+    "grammy": "^1.46.0",
+    "hono": "^4.13.16",
+    "valibot": "^1.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.5.1",
+    "@cloudflare/workers-types": "^5.20261104.1",
+    "@types/node": "^22.20.5",
+    "discord-api-types": "^0.38.57",
+    "eslint": "^10.14.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.157.0"
+  }
+}

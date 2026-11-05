@@ -136,7 +136,7 @@ log.error("reply_failed", {
 
 ## Test
 
-Stack là Vitest với `@cloudflare/vitest-pool-workers`, để test chạy trong Workers runtime. File test đặt cạnh code, ví dụ `src/core/router.test.ts`.
+Stack là Vitest với `@cloudflare/vitest-plugin`, để test chạy trong Workers runtime. File test đặt cạnh code, ví dụ `src/core/router.test.ts`.
 
 Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 
