@@ -24,4 +24,4 @@ Khi thay đổi một quyết định, không xoá mục cũ. Đổi trạng th�
 | D16 | Lỗi được log qua `PlatformError`, không log `message` của SDK | URL API của Zalo và Telegram chứa bot token | Log nguyên object lỗi | Active |
 | D17 | Quyền admin kiểm tra phía server bằng `ADMIN_USER_IDS` | Một danh sách dùng được cho mọi nền tảng, và fail closed khi thiếu cấu hình | Dựa vào quyền hiển thị lệnh của từng nền tảng | Active, chưa có lệnh admin |
 | D18 | Nội dung trả lời gom vào `src/messages/`, chưa dùng thư viện i18n | Hiện chỉ có một ngôn ngữ, nhưng thêm ngôn ngữ sau này không phải sửa từng lệnh | Viết text trực tiếp trong lệnh, hoặc cài i18n ngay | Active |
-| D19 | `README.md` ở root chỉ trỏ về `docs/` | Mỗi thông tin chỉ nằm ở một nơi, tránh hai bản bị lệch nhau | Giữ quick start và các bảng trong README ở root | Active |
+| D19 | `README.md` ở root chỉ giới thiệu ngắn và trỏ về `docs/` | Mỗi thông tin chỉ nằm ở một nơi, tránh hai bản bị lệch nhau | Giữ quick start và các bảng trong README ở root | Active |

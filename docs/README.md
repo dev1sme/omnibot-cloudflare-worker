@@ -2,7 +2,7 @@
 
 omnibot là một Cloudflare Worker duy nhất điều khiển nhiều bot chat: Zalo, Telegram, Discord. Logic chỉ viết một lần và chạy trên mọi nền tảng, không cần server hay VPS, và chạy được trên free tier của Cloudflare Workers.
 
-Đây là nơi duy nhất mô tả dự án. Bộ tài liệu này quy định cách xây dựng omnibot, và code, review, AI agent đều phải tuân theo. Repo chưa có code, nên đây là spec được viết trước khi implement.
+Đây là nơi duy nhất chứa chi tiết về dự án. Bộ tài liệu này quy định cách xây dựng omnibot, và code, review, AI agent đều phải tuân theo. Repo chưa có code, nên đây là spec được viết trước khi implement.
 
 ## Tính năng
 
@@ -42,7 +42,7 @@ omnibot là một Cloudflare Worker duy nhất điều khiển nhiều bot chat:
 ## Nguồn chuẩn
 
 1. Nếu các tài liệu mâu thuẫn nhau, `contracts.md` được ưu tiên về type và hành vi HTTP. `security.md` được ưu tiên về bảo mật.
-2. `README.md` ở thư mục gốc chỉ trỏ về đây và không chứa mô tả dự án.
+2. `README.md` ở thư mục gốc chỉ giới thiệu ngắn và trỏ về đây. Chi tiết chỉ nằm trong `docs/`.
 3. Nếu code và tài liệu khác nhau thì đó là lỗi. Hãy sửa code, hoặc sửa tài liệu trong cùng pull request.
 
 ## Trạng thái
