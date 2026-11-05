@@ -100,9 +100,18 @@ scripts/
 ├── set-webhooks.ts
 ├── register-discord.ts
 └── lib/                    # Script logic, covered by tests
+test/
+├── helpers.ts              # Shared test helpers
+├── worker.test.ts          # End-to-end webhook tests
+├── app.test.ts             # Mirrors src/app.ts
+├── core/                   # Mirrors src/core/
+├── adapters/<name>/        # Mirrors src/adapters/<name>/
+├── commands/
+├── lib/
+└── scripts/lib/            # Mirrors scripts/lib/
 ```
 
-- Test đặt cạnh file được test, ví dụ `src/core/router.test.ts`.
+- Test nằm trong `test/`, mirror theo `src/` và `scripts/`. Xem [conventions.md](conventions.md#test).
 - Thêm nền tảng chỉ cần thêm một thư mục trong `src/adapters/` và một dòng trong registry. Xem [adapters.md](adapters.md#thêm-nền-tảng).
 - Thêm lệnh chỉ cần thêm một file trong `src/commands/` và một dòng trong registry.
 - Chỉ tạo thư mục mới cấp `src/` khi có nhu cầu thật, và phải cập nhật tài liệu này trong cùng pull request.

@@ -1,129 +1,15 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { createEnv, createMessage } from "../../../test/helpers";
-import { PlatformError } from "../../lib/platform-error";
-import { discord } from "./index";
-
-const toHex = (bytes: ArrayBuffer) =>
-  [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { discord } from "../../../src/adapters/discord";
+import { PlatformError } from "../../../src/lib/platform-error";
+import { createEnv, createMessage } from "../../helpers";
 
 const INTERACTION_TOKEN = "SECRET_INTERACTION_TOKEN";
 const raw = { token: INTERACTION_TOKEN };
 const baseEnv = createEnv({ DISCORD_APP_ID: "app1", DISCORD_PUBLIC_KEY: "00" });
 
-const interaction = (overrides: Record<string, unknown> = {}) =>
-  JSON.stringify({
-    type: 2,
-    id: "i1",
-    token: INTERACTION_TOKEN,
-    channel_id: "ch1",
-    guild_id: "g1",
-    member: { user: { id: "u1", username: "ada", global_name: "Ada" } },
-    data: { name: "ping" },
-    ...overrides,
-  });
-
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-});
-
-describe("isEnabled", () => {
-  it("needs the app id and public key, not the bot token", () => {
-    expect(discord.isEnabled(baseEnv)).toBe(true);
-    expect(discord.isEnabled({ ...baseEnv, DISCORD_APP_ID: undefined })).toBe(false);
-    expect(discord.isEnabled({ ...baseEnv, DISCORD_PUBLIC_KEY: undefined })).toBe(false);
-  });
-});
-
-describe("verify", () => {
-  const body = '{"type":1}';
-  const timestamp = "1793923200";
-  let env = baseEnv;
-  let signature = "";
-
-  beforeAll(async () => {
-    const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
-      "sign",
-      "verify",
-    ])) as CryptoKeyPair;
-    const publicKey = (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer;
-    env = { ...baseEnv, DISCORD_PUBLIC_KEY: toHex(publicKey) };
-    signature = toHex(
-      await crypto.subtle.sign(
-        { name: "Ed25519" },
-        pair.privateKey,
-        new TextEncoder().encode(timestamp + body),
-      ),
-    );
-  });
-
-  const headers = (sig = signature, ts = timestamp) =>
-    new Headers({ "X-Signature-Ed25519": sig, "X-Signature-Timestamp": ts });
-
-  it("accepts a real signature in the Workers runtime", async () => {
-    expect(await discord.verify(body, headers(), env)).toBe(true);
-  });
-
-  it("rejects a changed body or timestamp", async () => {
-    expect(await discord.verify(`${body} `, headers(), env)).toBe(false);
-    expect(await discord.verify(body, headers(signature, "1"), env)).toBe(false);
-  });
-
-  it("fails closed on missing or malformed input", async () => {
-    expect(await discord.verify(body, new Headers(), env)).toBe(false);
-    expect(await discord.verify(body, headers("not-hex"), env)).toBe(false);
-    expect(await discord.verify(body, headers(), { ...env, DISCORD_PUBLIC_KEY: undefined })).toBe(false);
-  });
-});
-
-describe("parse", () => {
-  it("answers PING with PONG outside the envelope", async () => {
-    const result = discord.parse('{"type":1}', baseEnv);
-    if (result.kind !== "respond") throw new Error("Expected respond");
-    expect(result.response.status).toBe(200);
-    expect(result.response.headers.get("Content-Type")).toContain("application/json");
-    expect(await result.response.json()).toEqual({ type: 1 });
-  });
-
-  it("maps a guild command", () => {
-    expect(discord.parse(interaction(), baseEnv)).toMatchObject({
-      kind: "message",
-      msg: {
-        platform: "discord",
-        messageId: "i1",
-        chatId: "ch1",
-        chatType: "group",
-        user: { id: "u1", name: "Ada" },
-        text: "/ping",
-      },
-    });
-  });
-
-  it("maps a direct message command", () => {
-    const body = interaction({
-      guild_id: undefined,
-      member: undefined,
-      user: { id: "u2", username: "bob", global_name: null },
-    });
-    expect(discord.parse(body, baseEnv)).toMatchObject({
-      msg: { chatType: "private", user: { id: "u2", name: "bob" } },
-    });
-  });
-
-  it.each([
-    ["component interaction", interaction({ type: 3 })],
-    ["missing channel", interaction({ channel_id: undefined })],
-    ["missing user", interaction({ member: undefined })],
-    ["malformed JSON", "{"],
-  ])("ignores %s", (_, body) => {
-    expect(discord.parse(body, baseEnv)).toEqual({ kind: "ignore" });
-  });
-});
-
-describe("ack", () => {
-  it("defers outside the envelope", async () => {
-    expect(await discord.ack(createMessage()).json()).toEqual({ type: 5 });
-  });
 });
 
 describe("reply", () => {

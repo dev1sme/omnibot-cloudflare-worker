@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createCommand } from "../../test/helpers";
-import { resolve } from "./router";
+import { createCommand } from "../helpers";
+import { resolve } from "../../src/core/router";
 
 const hello = createCommand({ name: "hello" });
 

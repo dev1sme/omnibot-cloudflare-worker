@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createCtx, createEnv } from "../test/helpers";
-import { app } from "./app";
+import { createCtx, createEnv } from "./helpers";
+import { app } from "../src/app";
 
 function request(path: string, method = "POST") {
   return app.fetch(new Request(`https://omnibot.test${path}`, { method }), createEnv(), createCtx().ctx);

@@ -17,7 +17,7 @@ export default tseslint.config(
   },
   {
     files: ["src/commands/**"],
-    ignores: ["src/commands/index.ts", "**/*.test.ts"],
+    ignores: ["src/commands/index.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -35,7 +35,6 @@ export default tseslint.config(
   },
   {
     files: ["src/adapters/*/**"],
-    ignores: ["**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",

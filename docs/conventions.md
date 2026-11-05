@@ -141,7 +141,19 @@ log.error("reply_failed", {
 
 ## Test
 
-Stack là Vitest với `@cloudflare/vitest-plugin`, để test chạy trong Workers runtime. File test đặt cạnh code, ví dụ `src/core/router.test.ts`.
+Stack là Vitest với `@cloudflare/vitest-plugin`, để test chạy trong Workers runtime.
+
+Test PHẢI nằm trong `test/` và mirror theo đường dẫn của code. Mỗi file nguồn có logic có một file test riêng:
+
+| Code | Test |
+| --- | --- |
+| `src/core/router.ts` | `test/core/router.test.ts` |
+| `src/adapters/telegram/parse.ts` | `test/adapters/telegram/parse.test.ts` |
+| `scripts/lib/set-webhooks.ts` | `test/scripts/lib/set-webhooks.test.ts` |
+
+- KHÔNG ĐƯỢC đặt file `.test.ts` trong `src/` hoặc `scripts/`.
+- Test nhiều layer đặt ở gốc `test/`, ví dụ `test/worker.test.ts`.
+- File chỉ khai báo type, schema hoặc dữ liệu thì không cần test riêng.
 
 Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 

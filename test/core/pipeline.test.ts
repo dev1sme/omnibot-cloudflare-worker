@@ -6,11 +6,11 @@ import {
   createEnv,
   createMessage,
   createRequest,
-} from "../../test/helpers";
-import { PlatformError } from "../lib/platform-error";
-import { messages } from "../messages";
-import { handleWebhook } from "./pipeline";
-import type { Command, OutgoingMessage } from "./types";
+} from "../helpers";
+import { PlatformError } from "../../src/lib/platform-error";
+import { messages } from "../../src/messages";
+import { handleWebhook } from "../../src/core/pipeline";
+import type { Command, OutgoingMessage } from "../../src/core/types";
 
 const ping = createCommand();
 

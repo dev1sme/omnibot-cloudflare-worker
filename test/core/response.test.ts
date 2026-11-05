@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fail, ok } from "./response";
+import { fail, ok } from "../../src/core/response";
 
 describe("ok", () => {
   it("wraps data in the success envelope", async () => {

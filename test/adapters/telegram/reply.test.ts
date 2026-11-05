@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createEnv, createMessage } from "../../../test/helpers";
-import { PlatformError } from "../../lib/platform-error";
-import { telegram } from "./index";
+import { telegram } from "../../../src/adapters/telegram";
+import { PlatformError } from "../../../src/lib/platform-error";
+import { createEnv, createMessage } from "../../helpers";
 
 const TOKEN = "SECRET_TOKEN";
 const env = createEnv({
@@ -10,86 +10,9 @@ const env = createEnv({
   WEBHOOK_SECRET: "secret-value",
 });
 
-const update = (text: string, chatType = "private") =>
-  JSON.stringify({
-    update_id: 1,
-    message: {
-      message_id: 7,
-      chat: { id: -100, type: chatType },
-      from: { id: 42, first_name: "Ada" },
-      text,
-    },
-  });
-
-const parseText = (text: string) => {
-  const result = telegram.parse(update(text), env);
-  return result.kind === "message" ? result.msg.text : result.kind;
-};
-
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-});
-
-describe("isEnabled", () => {
-  it("needs the token, username, and secret", () => {
-    expect(telegram.isEnabled(env)).toBe(true);
-    expect(telegram.isEnabled({ ...env, TELEGRAM_BOT_USERNAME: undefined })).toBe(false);
-    expect(telegram.isEnabled({ ...env, WEBHOOK_SECRET: undefined })).toBe(false);
-    expect(telegram.isEnabled({ ...env, TELEGRAM_BOT_TOKEN: undefined })).toBe(false);
-  });
-});
-
-describe("verify", () => {
-  const verifyWith = (headers: Record<string, string>) =>
-    telegram.verify("{}", new Headers(headers), env);
-
-  it("accepts the right secret", async () => {
-    expect(await verifyWith({ "X-Telegram-Bot-Api-Secret-Token": "secret-value" })).toBe(true);
-  });
-
-  it("rejects a wrong or missing secret", async () => {
-    expect(await verifyWith({ "X-Telegram-Bot-Api-Secret-Token": "wrong" })).toBe(false);
-    expect(await verifyWith({})).toBe(false);
-  });
-});
-
-describe("parse", () => {
-  it("maps the update to a message", () => {
-    const result = telegram.parse(update("/ping", "supergroup"), env);
-    expect(result).toMatchObject({
-      kind: "message",
-      msg: {
-        platform: "telegram",
-        messageId: "7",
-        chatId: "-100",
-        chatType: "group",
-        user: { id: "42", name: "Ada" },
-        text: "/ping",
-      },
-    });
-  });
-
-  it("marks private chats", () => {
-    expect(telegram.parse(update("/ping"), env)).toMatchObject({ msg: { chatType: "private" } });
-  });
-
-  it("normalizes bot mentions", () => {
-    expect(parseText("/ping")).toBe("/ping");
-    expect(parseText("/ping@this_bot arg")).toBe("/ping arg");
-    expect(parseText("/ping@other_bot")).toBe("ignore");
-  });
-
-  it("does not treat an email in plain text as a mention", () => {
-    expect(parseText("mail a@b.c")).toBe("mail a@b.c");
-  });
-
-  it.each(["{", "{}", JSON.stringify({ edited_message: {} }), JSON.stringify({ message: { text: "x" } })])(
-    "ignores %s",
-    (body) => {
-      expect(telegram.parse(body, env)).toEqual({ kind: "ignore" });
-    },
-  );
 });
 
 describe("reply", () => {

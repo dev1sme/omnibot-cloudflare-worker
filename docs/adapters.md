@@ -173,7 +173,7 @@ Các bước với nền tảng webhook:
 3. Thêm adapter vào `src/adapters/index.ts`. Route `/webhook/<name>` sẽ hoạt động mà không cần sửa routing.
 4. Thêm secret của nền tảng vào `Env`, và thêm các bước cài đặt vào [operations.md](operations.md).
 5. Thêm một mục vào tài liệu này với quy tắc verify, parse và reply.
-6. Thêm test cho verify đúng, verify sai, từng kết quả parse, và reply thất bại.
+6. Thêm test trong `test/adapters/<name>/` cho verify đúng, verify sai, từng kết quả parse, và reply thất bại.
 7. Cập nhật bảng trạng thái trong [README.md](README.md).
 
 Nền tảng mới KHÔNG ĐƯỢC đòi hỏi thay đổi trong `src/commands/`. Nếu có vẻ phải đổi, hãy sửa contract trong một pull request riêng trước.
