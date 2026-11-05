@@ -60,6 +60,30 @@ Muốn đổi hoặc thêm thư viện vào bảng này thì sửa tài liệu t
 | Object lệnh | Tên lệnh | `export const hello` |
 | Object adapter | Tên nền tảng | `export const telegram` |
 
+### JSON và code
+
+JSON bên ngoài dùng `snake_case`. Code TypeScript dùng `camelCase`. Adapter đổi tên field ngay tại biên.
+
+| Vị trí | Kiểu | Ví dụ |
+| --- | --- | --- |
+| Payload của nền tảng, `schema.ts` | `snake_case`, đúng theo nền tảng | `message_id` |
+| Request gửi tới API nền tảng | `snake_case`, đúng theo nền tảng | `chat_id` |
+| Response envelope | `snake_case` | `has_more_pages` |
+| `core/`, `commands/`, `lib/`, type dùng chung | `camelCase` | `messageId` |
+
+```ts
+// schema.ts
+const MessageSchema = v.object({ message_id: v.number() });
+
+// parse.ts
+const msg = { messageId: String(output.message_id) /* ... */ };
+```
+
+- `IncomingMessage`, `OutgoingMessage` và các type dùng chung KHÔNG ĐƯỢC chứa field `snake_case` của nền tảng.
+- Code ngoài `src/adapters/<name>/` KHÔNG ĐƯỢC đọc field `snake_case` của nền tảng.
+- Field nhiều từ trong envelope PHẢI viết `snake_case`, kể cả trong type khai báo envelope.
+- Nếu bật rule `camelcase` của ESLint, PHẢI đặt `properties: "never"` để không báo lỗi các field JSON.
+
 ## Hằng số
 
 Giới hạn của nền tảng và API base URL PHẢI là hằng số có tên, đặt trong adapter sử dụng chúng.
