@@ -16,14 +16,33 @@ export default tseslint.config(
   },
   {
     files: ["src/commands/**"],
-    ignores: ["src/commands/index.ts"],
+    ignores: ["src/commands/index.ts", "**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            { name: ".", message: "Read deps.commands instead." },
+            { name: "./index", message: "Read deps.commands instead." },
+          ],
+          patterns: [
+            { group: ["**/adapters", "**/adapters/**"], message: "Commands must not import adapters." },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/adapters/*/**"],
+    ignores: ["**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
-            { group: ["**/adapters/**"], message: "Commands must not import adapters." },
-            { group: ["./index", "./index.ts", "."], message: "Read deps.commands instead." },
+            { regex: "^\\.\\./[^.]", message: "Adapters must not import other adapters." },
+            { regex: "^\\.\\./index", message: "Adapters must not import the registry." },
+            { regex: "^\\.\\./\\.\\./(commands|core/(router|pipeline))", message: "Adapters must not import commands or the router." },
           ],
         },
       ],
