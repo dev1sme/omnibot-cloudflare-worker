@@ -98,10 +98,20 @@ src/
     └── split-message.ts
 scripts/
 ├── set-webhooks.ts
-└── register-discord.ts
+├── register-discord.ts
+└── lib/                    # Script logic, covered by tests
+test/
+├── helpers.ts              # Shared test helpers
+├── worker.test.ts          # End-to-end webhook tests
+├── app.test.ts             # Mirrors src/app.ts
+├── core/                   # Mirrors src/core/
+├── adapters/<name>/        # Mirrors src/adapters/<name>/
+├── commands/
+├── lib/
+└── scripts/lib/            # Mirrors scripts/lib/
 ```
 
-- Test đặt cạnh file được test, ví dụ `src/core/router.test.ts`.
+- Test nằm trong `test/`, mirror theo `src/` và `scripts/`. Xem [conventions.md](conventions.md#test).
 - Thêm nền tảng chỉ cần thêm một thư mục trong `src/adapters/` và một dòng trong registry. Xem [adapters.md](adapters.md#thêm-nền-tảng).
 - Thêm lệnh chỉ cần thêm một file trong `src/commands/` và một dòng trong registry.
 - Chỉ tạo thư mục mới cấp `src/` khi có nhu cầu thật, và phải cập nhật tài liệu này trong cùng pull request.
@@ -115,7 +125,9 @@ app.all("/webhook/:platform", (c) => {
   const adapter = adapters.find((a) => a.name === c.req.param("platform"));
   if (!adapter) return fail("NOT_FOUND");
   if (c.req.method !== "POST") return fail("METHOD_NOT_ALLOWED");
-  return handleWebhook(c.req.raw, adapter, commands, c.env, c.executionCtx);
+  // Hono declares a narrower context type than the Workers runtime object it holds.
+  const ctx = c.executionCtx as ExecutionContext;
+  return handleWebhook(c.req.raw, adapter, commands, c.env, ctx);
 });
 
 app.notFound(() => fail("NOT_FOUND"));
@@ -141,6 +153,7 @@ async function handleWebhook(
   const rawBody = await req.text();
 
   if (!(await adapter.verify(rawBody, req.headers, env))) {
+    log.warn("verify_failed", { platform: adapter.name });
     return fail("UNAUTHORIZED");
   }
 
@@ -151,7 +164,7 @@ async function handleWebhook(
   const route = resolve(parsed.msg.text, commands);
   if (route.kind === "none") return ok();
 
-  ctx.waitUntil(execute(route, parsed.msg, adapter, commands, env, ctx));
+  ctx.waitUntil(execute(route, parsed.msg, adapter, { env, ctx, commands }));
   return adapter.ack(parsed.msg);
 }
 ```
@@ -177,32 +190,36 @@ Vì vậy mọi nền tảng đi chung một luồng: acknowledge trước, sau 
 `execute` chạy sau khi response đã được trả về, nên không còn gì bắt được lỗi của nó. Hàm này KHÔNG ĐƯỢC reject.
 
 ```ts
-async function execute(route, msg, adapter, commands, env, ctx) {
-  const fields = { platform: msg.platform, command: commandName(route) };
+async function execute(route, msg, adapter, deps) {
+  const fields = {
+    platform: msg.platform,
+    command: route.kind === "command" ? route.command.name : undefined,
+  };
 
   let out: OutgoingMessage;
   try {
-    out = await runRoute(route, msg, { env, ctx, commands });
+    out = await runRoute(route, msg, deps);
+    if (!out.text) throw new Error("Command returned empty text");
   } catch (error) {
     log.error("command_failed", { ...fields, ...errorFields(error) });
     out = { text: messages.commandFailed };
   }
 
   try {
-    await adapter.reply(msg, out, env);
+    await adapter.reply(msg, out, deps.env);
   } catch (error) {
     log.error("reply_failed", { ...fields, ...errorFields(error) });
   }
 }
 
-function runRoute(route, msg, deps) {
-  if (route.kind === "unknown") return { text: messages.unknownCommand };
-  if (
+async function runRoute(route, msg, deps) {
+  if (route.kind !== "command") return { text: messages.unknownCommand };
+
+  const denied =
     route.command.permission === "admin" &&
-    !isAdmin(msg.platform, msg.user.id, deps.env.ADMIN_USER_IDS)
-  ) {
-    return { text: messages.permissionDenied };
-  }
+    !isAdmin(msg.platform, msg.user.id, deps.env.ADMIN_USER_IDS);
+  if (denied) return { text: messages.permissionDenied };
+
   return route.command.run(msg, deps);
 }
 ```

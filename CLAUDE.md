@@ -28,6 +28,7 @@ Các chuẩn trong `docs/` là bắt buộc. Hãy bắt đầu từ `docs/README
 - Nội dung gửi cho người dùng nằm trong `src/messages/`.
 - Không chạy `npm run set-webhooks` với URL tunnel, dùng `set-webhooks:dev`.
 - Tạo response bằng `ok()` và `fail()`. Chỉ protocol của nền tảng, như Discord `PING` và ack, mới không dùng envelope.
+- Mọi ngoại lệ phải được đánh dấu tại chỗ, kèm lý do. Xem `docs/conventions.md`.
 - Nếu code và `docs/` khác nhau, hãy sửa một trong hai trong cùng thay đổi, và cập nhật bảng trạng thái trong `docs/README.md`.
 
 ## Lệnh

@@ -2,7 +2,7 @@
 
 ## Yêu cầu
 
-- Node.js bản đang ở trạng thái Current, Active hoặc Maintenance. Wrangler hỗ trợ các bản này và tài liệu không nêu con số tối thiểu cố định.
+- Node.js từ 22.21 trở lên, và phải là bản đang ở trạng thái Current, Active hoặc Maintenance.
 - Tài khoản Cloudflare.
 - Wrangler là `devDependency` của dự án, chạy bằng `npx wrangler`. Không cài global. Cloudflare khuyến nghị cài local để cả dự án dùng chung một phiên bản.
 
@@ -70,6 +70,7 @@ id = "<dev-kv-id>"
 ```
 
 - `vars`, `kv_namespaces` và secret không kế thừa từ top-level, nên `[env.dev]` phải khai báo lại.
+- `id` của KV trong `wrangler.toml` hiện là giá trị giữ chỗ. PHẢI thay bằng id thật trước khi deploy.
 - Giữ `compatibility_date` cố định. Chỉ đổi khi có chủ đích, và phải test sau khi đổi.
 
 ## Deploy lần đầu
@@ -166,7 +167,7 @@ Script TypeScript chạy bằng `tsx` và nạp secret bằng `--env-file`. Node
 {
   "scripts": {
     "dev": "wrangler dev --env dev",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --env=\"\"",
     "deploy:dev": "wrangler deploy --env dev",
     "tail": "wrangler tail",
     "tail:dev": "wrangler tail --env dev",
@@ -212,7 +213,7 @@ Dùng GitHub Actions.
 
 | Sự kiện | Việc chạy |
 | --- | --- |
-| Mỗi pull request | `npm ci`, `npm run lint`, `npm test`, `npm audit`, `npx wrangler deploy --dry-run` |
+| Mỗi pull request | `npm ci`, `npm run lint`, `npm test`, `npm audit --omit=dev`, `npx wrangler deploy --dry-run --env=""` |
 | Push vào `main`, sau khi các bước trên pass | Deploy production bằng `cloudflare/wrangler-action@v4` |
 
 ```yaml

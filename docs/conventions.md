@@ -14,6 +14,20 @@ Code, comment, identifier và commit message PHẢI viết bằng tiếng Anh. C
 - Dùng named export. Default export duy nhất là Worker handler trong `src/index.ts`, do runtime yêu cầu.
 - Dùng Web API (`fetch`, `crypto.subtle`, `Response`). Không thêm API chỉ có trên Node.js vào code của Worker.
 
+## Ngoại lệ
+
+Mọi ngoại lệ so với một quy tắc PHẢI được đánh dấu ngay tại chỗ, kèm lý do rõ ràng:
+
+| Loại | Cách đánh dấu |
+| --- | --- |
+| Không có file test | `// test-exempt: <lý do>` ở đầu file |
+| Test nhiều layer | `// test-cross-layer: <lý do>` ở đầu file |
+| Code làm khác quy tắc | Comment ngay trên dòng đó, nêu lý do |
+| Rule ESLint được tắt | Comment ngay trên cấu hình hoặc dòng đó, nêu lý do |
+| Quy tắc trong tài liệu có ngoại lệ | Ghi rõ ngay trong quy tắc đó |
+
+Ngoại lệ không có đánh dấu và lý do được coi là lỗi, kể cả khi code vẫn chạy đúng. Quyết định lớn ghi thêm vào [decisions.md](decisions.md).
+
 ## Thư viện
 
 NÊN dùng thư viện thay vì tự viết, nếu có thư viện đạt các điều kiện dưới đây. KHÔNG ĐƯỢC tự viết crypto.
@@ -45,6 +59,11 @@ Chỉ tự viết khi thoả một trong hai điều kiện, và PHẢI nêu lý
 | Gọi API Telegram | `grammy` | Chỉ dùng class `Api` |
 | Chữ ký Discord | `discord-interactions` | Chỉ dùng `verifyKey` |
 | Type của Discord | `discord-api-types` | Chỉ dùng type |
+
+Hai dev dependency không dùng bản mới nhất, vì tool khác chưa hỗ trợ:
+
+- `typescript` giữ `~6.0`, vì `typescript-eslint` `8.72.1` yêu cầu `<6.1.0`.
+- `vitest` giữ `^4.1`. `@cloudflare/vitest-plugin` đã hỗ trợ `^5.0`, nên có thể nâng khi cần.
 
 Muốn đổi hoặc thêm thư viện vào bảng này thì sửa tài liệu trong cùng pull request.
 
@@ -82,7 +101,7 @@ const msg = { messageId: String(output.message_id) /* ... */ };
 - `IncomingMessage`, `OutgoingMessage` và các type dùng chung KHÔNG ĐƯỢC chứa field `snake_case` của nền tảng.
 - Code ngoài `src/adapters/<name>/` KHÔNG ĐƯỢC đọc field `snake_case` của nền tảng.
 - Field nhiều từ trong envelope PHẢI viết `snake_case`, kể cả trong type khai báo envelope.
-- Nếu bật rule `camelcase` của ESLint, PHẢI đặt `properties: "never"` để không báo lỗi các field JSON.
+- Không bật rule `camelcase` của ESLint. Rule này đã bị đóng băng, và sẽ báo lỗi các field JSON.
 
 ## Hằng số
 
@@ -130,13 +149,26 @@ log.error("reply_failed", {
 | `reply_rate_limited` | `warn` | Gặp `429` và sẽ retry |
 | `unexpected_error` | `error` | Lỗi trong `app.onError` |
 
-- `errorFields(error)` chỉ trả `status` và `error_code` từ `PlatformError`, còn với lỗi khác chỉ trả `error_name`. KHÔNG ĐƯỢC log `error.message`, vì có thể chứa token hoặc nội dung tin nhắn.
+- `errorFields(error)` trả `error_name`, cộng thêm `status` và `error_code` nếu là `PlatformError`. KHÔNG ĐƯỢC log `error.message`, vì có thể chứa token hoặc nội dung tin nhắn.
 - Không log theo từng request thành công. Workers Logs đã ghi invocation và free tier có giới hạn.
 - Nội dung bị cấm log nằm trong [security.md](security.md#logging).
 
 ## Test
 
-Stack là Vitest với `@cloudflare/vitest-pool-workers`, để test chạy trong Workers runtime. File test đặt cạnh code, ví dụ `src/core/router.test.ts`.
+Stack là Vitest với `@cloudflare/vitest-plugin`, để test chạy trong Workers runtime.
+
+Test PHẢI nằm trong `test/` và mirror theo đường dẫn của code. Mọi file `.ts` trong `src/` và `scripts/` PHẢI có một file test riêng, hoặc được đánh dấu miễn trừ:
+
+| Code | Test |
+| --- | --- |
+| `src/core/router.ts` | `test/core/router.test.ts` |
+| `src/adapters/telegram/parse.ts` | `test/adapters/telegram/parse.test.ts` |
+| `scripts/lib/set-webhooks.ts` | `test/scripts/lib/set-webhooks.test.ts` |
+
+- KHÔNG ĐƯỢC đặt file `.test.ts` trong `src/` hoặc `scripts/`.
+- File được miễn trừ PHẢI có comment `// test-exempt: <lý do>`. Chỉ miễn trừ file không có logic riêng: type, schema, text, re-export, hoặc entry point chỉ gọi vào `lib/`.
+- Test không ứng với một file nguồn PHẢI có comment `// test-cross-layer: <lý do>`, ví dụ `test/worker.test.ts`.
+- `npm run lint` chạy `scripts/check-test-mirror.ts` và báo lỗi nếu vi phạm các quy tắc này, nên CI cũng chặn.
 
 Test KHÔNG ĐƯỢC gọi API thật của nền tảng. Hãy stub `fetch`.
 

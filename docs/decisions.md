@@ -13,7 +13,7 @@ Khi thay đổi một quyết định, không xoá mục cũ. Đổi trạng th�
 | D5 | Worker không giữ `DISCORD_BOT_TOKEN` | Chỉ script cần token này, nên giữ trên Worker chỉ làm tăng rủi ro | Đưa mọi secret lên Worker | Active |
 | D6 | Ưu tiên thư viện, không tự viết crypto | Giảm code phải bảo trì và rủi ro bảo mật | Giữ dependency ở mức tối thiểu | Active |
 | D7 | Chọn Valibot | Nhẹ hơn Zod, phù hợp giới hạn CPU và startup của Workers | Zod | Active |
-| D8 | Chỉ dùng `Api` của grammY và `verifyKey` của `discord-interactions` | `Bot`, `webhookCallback` và middleware kiểu Express không hợp với pipeline | Dùng cả framework của SDK | Active, cần test trên Workers |
+| D8 | Chỉ dùng `Api` của grammY và `verifyKey` của `discord-interactions` | `Bot`, `webhookCallback` và middleware kiểu Express không hợp với pipeline | Dùng cả framework của SDK | Active, đã test trên Workers |
 | D9 | Zalo dùng client mỏng tự viết | Chỉ có SDK cộng đồng chưa đánh giá, chúng sẽ giữ bot token, và omnibot chỉ cần hai API | Dùng SDK cộng đồng | Active |
 | D10 | Mỗi nền tảng một thư mục trong `src/adapters/` | Thêm nền tảng không phải sửa code của nền tảng khác | Một file cho mỗi adapter | Active |
 | D11 | Response envelope theo chuẩn của `project-member-status` | Thống nhất format giữa các dự án, thuận tiện debug và làm API sau này | Format `{ ok }` riêng | Active |
@@ -25,3 +25,5 @@ Khi thay đổi một quyết định, không xoá mục cũ. Đổi trạng th�
 | D17 | Quyền admin kiểm tra phía server bằng `ADMIN_USER_IDS` | Một danh sách dùng được cho mọi nền tảng, và fail closed khi thiếu cấu hình | Dựa vào quyền hiển thị lệnh của từng nền tảng | Active, chưa có lệnh admin |
 | D18 | Nội dung trả lời gom vào `src/messages/`, chưa dùng thư viện i18n | Hiện chỉ có một ngôn ngữ, nhưng thêm ngôn ngữ sau này không phải sửa từng lệnh | Viết text trực tiếp trong lệnh, hoặc cài i18n ngay | Active |
 | D19 | `README.md` ở root chỉ giới thiệu ngắn và trỏ về `docs/` | Mỗi thông tin chỉ nằm ở một nơi, tránh hai bản bị lệch nhau | Giữ quick start và các bảng trong README ở root | Active |
+| D20 | Test nằm trong `test/`, mirror theo `src/` và `scripts/` | `src/` chỉ chứa code chạy thật, và mỗi file nguồn có một file test dễ đoán đường dẫn | Đặt test cạnh code | Active |
+| D21 | Ngoại lệ phải được đánh dấu tại chỗ, và mirror test được kiểm tra tự động | Quy tắc chỉ có giá trị khi được áp dụng nhất quán, và đánh dấu tại chỗ không bị lệch như một danh sách riêng | Ghi danh sách ngoại lệ trong tài liệu | Active |
